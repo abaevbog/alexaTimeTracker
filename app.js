@@ -3,67 +3,78 @@ const chalk = require('chalk')
 const yargs = require('yargs')
 const notes = require('./notes.js')
 
-yargs.command({
-    'command':'list',
-    'describe': 'list notes',
-    handler: function(argv){
-        console.log("Listing notes \n");
-        notes.loadNotes().forEach(element => {
-            console.log(`Title:${element.title}\nBody:${element.body}\n`);
-        });
-    }
-});
 
 yargs.command({
-    'command':'remove',
-    'describe': 'remove note',
+    'command':'start',
+    'describe': 'work on project',
     'builder':{
-        'title': {
-            'describe':'remove note with a given title',
+        'project': {
+            'describe':'name of the project to work on',
             'demandOption':true,
             'type':'string'
         }
     },
     handler: function(argv){
-        notes.removeNote(argv.title);
+        notes.addLog(argv.project,'start');
     }
 });
 
+
 yargs.command({
-    'command':'add',
-    'describe': 'add new note',
-    'builder': {
-        'title': {
-            'describe': 'Note title',
-             demandOption:true,
-             type: 'string'
-        },
-        'body': {
-            'describe': 'note body',
-            demandOption:true,
-            type: 'string'
+    'command':'end',
+    'describe': 'finish working on project',
+    'builder':{
+        'project': {
+            'describe':'name of the project to stop working on',
+            'demandOption':true,
+            'type':'string'
         }
     },
     handler: function(argv){
-        notes.addNote(argv.title,argv.body);
+        notes.addLog(argv.project, 'end');
     }
 });
 
 yargs.command({
-    'command':'read',
-    'describe': 'read the note',
+    'command':'create',
+    'describe': 'create new project',
     'builder': {
-        'title': {
-            'describe': 'Note title',
+        'project': {
+            'describe': 'New project to create',
              demandOption:true,
              type: 'string'
         },
     },
     handler: function(argv){
-        console.log("reading the note...");
-        notes.readNote(argv.title);
+        notes.createProject(argv.project);
     }
 });
+
+yargs.command({
+    'command':'delete',
+    'describe': 'delete project',
+    'builder': {
+        'project': {
+            'describe': 'Delete existing project',
+             demandOption:true,
+             type: 'string'
+        },
+    },
+    handler: function(argv){
+        notes.removeProject(argv.project);
+    }
+});
+
+yargs.command({
+    'command':'ls',
+    'describe': 'show existing projects',
+    handler: function(argv){
+        console.log("Existing projects:\n");
+        notes.listProjects();
+    }
+});
+
+
 
 
 yargs.parse()
