@@ -53,7 +53,7 @@ yargs.command({
     'command':'current',
     'describe': 'current project',
     handler: function(argv){
-        notes.currentProject();
+        //notes.currentProject();
     }
 });
 
@@ -62,6 +62,15 @@ yargs.command({
     'describe': 'report daily or weekly work progress',
     handler: function(argv){
         notes.report(argv.mode);
+    }
+});
+
+
+yargs.command({
+    'command':'signup <username>',
+    'describe': 'signup',
+    handler: function(argv){
+        notes.signup(argv.username);
     }
 });
 

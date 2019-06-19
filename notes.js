@@ -2,83 +2,133 @@ const fs = require('fs');
 const timestamp = require('time-stamp');
 const assert = require('assert');
 
+const { MongoClient, ObjectId } = require('mongodb');
+const connectionUrl = 'mongodb://127.0.0.1:27017';
+const mongoUtils = require('./mongoUtils.js');
+
 var currentProject;
 
 const createProject = function (title) {
-    //data - list of projects
-    const data = loadLogs();
-    const duplicateProject = data.find((project) => project.title === title);
-    if (!duplicateProject) {
-        const proj = { "project": title, "logs": [] };
-        data.push(proj);
-        saveProjects(data);
-        console.log("Done!");
-    } else {
-        console.log("Project title already taken");
-    }
-}
-//activity = start of end
-const addLog = function (projectName, activity) {
-    assert(activity == 'start' || activity == 'end');
-    const data = loadLogs();
-    if(activity == 'end'){
-        projectName = currentProject;
-    }
-    const projIndex = data.findIndex(function (projectDict) {
-        return projectDict.project == projectName;
-    })
-    if (projIndex != -1) {
-        const logsLen = data[projIndex].logs.length-1;
-        if (activity == 'start'){
-            if (currentProject){
-                console.log(`You can't start a new project because you are working on ${currentProject}`);
+    mongoUtils.connectToDb(() => {
+        const db = mongoUtils.getDb();
+        const getUser = db.collection('userData').findOne({ user: 'username' });
+
+        getUser.then((usr) => {
+            if (usr.projectNames.includes(title)) {
+                console.log("Project title already taken");
                 return;
             }
-            if (logsLen  < 1 || typeof data[projIndex].logs[logsLen].start != 'undefined' &&
-                typeof data[projIndex].logs[logsLen].end != 'undefined'){
-                data[projIndex].logs.push({ start: timestamp('YYYY/MM/DD/HH:mm:ss') });
-                console.log(projectName.slice());
-                currentProject = projectName.slice();
-                console.log(currentProject);
-            } else{
-                console.log("Work on this project has already been started");
-            }
-         } else {
-             if (typeof data[projIndex].logs[logsLen].start != 'undefined'){
-                if (typeof data[projIndex].logs[logsLen].end == 'undefined'){
-                    data[projIndex].logs[logsLen].end = timestamp('YYYY/MM/DD/HH:mm:ss');
-                    data[projIndex].logs[logsLen].duration = subtractTimeStamps(data[projIndex].logs[logsLen].end,data[projIndex].logs[logsLen].start);
-                    currentProject = ''; 
-                    console.log("Work finished");
+            db.collection('userData').updateOne({
+                user: 'username'
+            }, {
+                    $push: { projectNames: title }
+                })
+
+            console.log("Done!");
+        }).catch((e) => console.log(e));
+    });
+}
+
+const addLog = function (projectName, activity, ) {
+    assert(activity == 'start' || activity == 'end');
+
+    mongoUtils.connectToDb(() => {
+        const db = mongoUtils.getDb();
+        const searchUser = db.collection('userData').findOne({ user: 'username' });
+        searchUser.then((result) => {
+            if (result.projectNames.includes(projectName) || result.currentProject) {
+
+                if (activity == 'start') {
+
+                    if (!result.currentProject) {
+                        log = { user: 'username', projectName: projectName, start: timestamp('YYYY/MM/DD/HH:mm:ss'), finish: null, duration: null };
+                        insertLogToDb(log);
+                        db.collection('userData').updateOne({ user: 'username' },
+                            {
+                                $set: {
+                                    currentProject: projectName
+                                }
+                            }).then((suc) => console.log("set current prj")).catch((e) => console.log(e));
+                    } else {
+                        console.log("Work on this project has already been started");
+                    }
                 } else {
-                    console.log("Work on this project has already been finished");
+                    if (result.currentProject) {
+                        db.collection('userData').findOne({ user: 'username' }).then((result) => {
+                            console.log(result);
+                            db.collection('logs').findOne({ projectName: result.currentProject, finish: null })
+                                .then((log) => {
+                                    updateLog = { projectName: result.currentProject, finish: timestamp('YYYY/MM/DD/HH:mm:ss'), duration: subtractTimeStamps(timestamp('YYYY/MM/DD/HH:mm:ss'), log.start) }
+                                    updateLogInDb(updateLog);
+                                    console.log("Work finished");
+                                    nullifyCurrentProject('username');
+                                }).catch((e) => console.log(e));
+                        }).catch((e) => console.log(e));
+                    } else {
+                        console.log("Work on this project has already been finished");
+                    }
                 }
-             } else {
-                 console.log("Work on this project was never started");
-             }        
-         }
-        saveProjects(data);
-    } else {
-        console.log("Project not found");
-    }
+            } else {
+                console.log("Project not found");
+            }
+        }).catch((e) => console.log(e));
+    });
 }
 
 
 
 const saveProjects = (projects) => {
-    const dataJson = JSON.stringify( {"current":currentProject,"recorded":projects});
-    fs.writeFileSync('/Users/bogdanabaev/RandomProgramming/node/notes/timetracker.json', dataJson);
+    const dataJson = JSON.stringify({ "current": currentProject, "recorded": projects });
+    MongoClient.connect(connectionUrl, { useNewUrlParser: true }, (error, MongoClient) => {
+        if (error) {
+            return console.log("DB connection failed");
+        }
+        const db = MongoClient.db(database);
+    });
+    //fs.writeFileSync('/Users/bogdanabaev/RandomProgramming/node/notes/timetracker.json', dataJson);
 }
 
-const loadLogs = function () {
-    try {
-        const buffer = fs.readFileSync('/Users/bogdanabaev/RandomProgramming/node/notes/timetracker.json');
-        const dataJson = buffer.toString();
-        currentProject = JSON.parse(dataJson).current;
-        return JSON.parse(dataJson).recorded;
-    } catch (e) {
-        return []
-    }
+// log = {user:..., projectName:..., start:...,finish:...,duration:...}
+const insertLogToDb = (log) => {
+    mongoUtils.connectToDb(() => {
+        const db = mongoUtils.getDb();
+        const addToCollection = db.collection('logs').insertOne(log);
+
+        addToCollection.then((suc) => {
+            console.log("DB updated");
+        }).catch((e) => console.log(e));
+    });
+}
+
+
+const updateLogInDb = (log) => {
+    //mongoUtils.connectToDb(() => {
+        const db = mongoUtils.getDb();
+
+        db.collection('logs').updateOne({
+            user: 'username',
+            projectName: log.projectName
+        }, {
+                $set: {
+                    finish: log.finish,
+                    duration: log.duration
+                }
+            }).then((suc) => console.log(suc))
+            .catch((e) => console.log(e));
+   // });
+}
+
+
+const nullifyCurrentProject=(username) => {
+    const db = mongoUtils.getDb();
+    db.collection('userData').updateOne({
+        user:username
+    }, {
+        $set: {
+            currentProject:null
+        }
+    }).then((suc) => console.log("current project nulled"))
+        .catch((e) => console.log(e))
 }
 
 const removeProject = function (projectName) {
@@ -98,32 +148,16 @@ const removeProject = function (projectName) {
 const listProjects = function () {
     const data = loadLogs();
     for (var i = 0; i < data.length; i++) {
-       console.log(`${data[i].project}\t`); 
+        console.log(`${data[i].project}\t`);
     }
 
 }
 
 
-const getCurrentProjData = function(){
-    const data = loadLogs();
-    if (currentProject){
-        const projIndex = data.findIndex(function (projectDict) {
-            return projectDict.project == currentProject;
-        });
-        assert(projIndex!=-1);
-        const logsLen = data[projIndex].logs.length-1;
-        const duration = subtractTimeStamps(timestamp('YYYY/MM/DD/HH:mm:ss'),data[projIndex].logs[logsLen].start);
-        console.log(`Current project: ${currentProject}`);
-        console.log(`Work time elapsed: ${duration}`);
-    }else {
-        console.log("No current project");
-    }
-}
 
-
-const subtractTimeStamps = function(stampTwo,stampOne){
-    const timeOne = stampOne.toString().substring(11,stampOne.length);
-    const timeTwo = stampTwo.toString().substring(11,stampTwo.length);
+const subtractTimeStamps = function (stampTwo, stampOne) {
+    const timeOne = stampOne.toString().substring(11, stampOne.length);
+    const timeTwo = stampTwo.toString().substring(11, stampTwo.length);
     const lstOne = timeOne.split(':');
     const lstTwo = timeTwo.split(':');
     var durationHour = parseInt(lstTwo[0] - lstOne[0]);
@@ -133,7 +167,7 @@ const subtractTimeStamps = function(stampTwo,stampOne){
         durationHour--;
         durationMin = 60 + durationMin;
     }
-    if (durationSec < 0){
+    if (durationSec < 0) {
         durationMin--;
         durationSec = 60 + durationSec;
     }
@@ -143,23 +177,43 @@ const subtractTimeStamps = function(stampTwo,stampOne){
 }
 
 //mode = week or today
-const report = function(mode){
+const report = function (mode) {
     const data = loadLogs();
     const today = timestamp('YYYY/MM/DD');
     const result = [];
-    if (mode == 'today'){
+    if (mode == 'today') {
         data.forEach(element => {
-            var i = element.logs.length-1;
-            while ( i > -1 && element.logs[i].end && element.logs[i].end.substring(0,10) == today){
+            var i = element.logs.length - 1;
+            while (i > -1 && element.logs[i].end && element.logs[i].end.substring(0, 10) == today) {
                 result.push(`Project ${element.project}: ${element.logs[i].duration}`);
                 i--;
-            }  
+            }
         });
     }
     console.log(result);
 }
 
 
+const signup = function (username) {
+    mongoUtils.connectToDb(() => {
+        const db = mongoUtils.getDb();
+        const checkUserNames = db.collection('userData').findOne({ user: username });
+        console.log("a");
+        checkUserNames.then((usr) => {
+            console.log("b");
+            if (usr) {
+                console.log("Username already exists");
+                return;
+            }
+            console.log("c");
+            db.collection('userData').insertOne({ user: 'username', projectNames: [], currentProject: null }).
+                then((_) => {
+                    console.log("Username registered")
+                    return;
+                }).catch((e) => console.log(e));
+        });
+    });
+}
 
 
 module.exports = {
@@ -167,6 +221,7 @@ module.exports = {
     addLog: addLog,
     removeProject: removeProject,
     listProjects: listProjects,
-    currentProject:getCurrentProjData,
-    report:report
+    //currentProject: getCurrentProjData,
+    report: report,
+    signup: signup
 }
