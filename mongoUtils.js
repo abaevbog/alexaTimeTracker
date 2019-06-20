@@ -13,10 +13,12 @@ const connectToDb = function (doMoreStuff) {
             db = client.db(database);
             doMoreStuff().then((yes) => {
                 console.log('closing');
-                client.close()
-            }).catch((e) => console.log(e));     
+                client.close();
+            }).catch((e) => {
+                client.close();
+                console.log(e);
+            });     
         }).catch((error) => {
-            client.close()
             console.log(error);
         })
 }

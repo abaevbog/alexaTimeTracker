@@ -58,10 +58,10 @@ yargs.command({
 });
 
 yargs.command({
-    'command':'report <mode>',
+    'command':'report',
     'describe': 'report daily or weekly work progress',
     handler: function(argv){
-        notes.report(argv.mode);
+        notes.report();
     }
 });
 

@@ -8,12 +8,7 @@ const mongoUtils = require('./mongoUtils.js');
 
 var currentProject;
 
-// const createProject = function(title) {
-//     return createProjectPromise.then((_)=>{
-//         mongoUtils.getClient.close();
-//     }).catch((e) => console.log(e));
-// };
-
+//
 const createProject = function (title) {
     mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
@@ -40,6 +35,7 @@ const createProject = function (title) {
     );
 }
 
+//
 const addLog = function (projectName, activity) {
     mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
@@ -53,23 +49,24 @@ const addLog = function (projectName, activity) {
                     if (activity == 'start') {
 
                         if (!result.currentProject) {
-                            log = { user: 'username', projectName: projectName, start: timestamp('YYYY/MM/DD/HH:mm:ss'), finish: null, duration: null };
+                            log = { user: 'username', projectName: projectName, start: {year:timestamp('YYYY'),month:timestamp('MM'),day:timestamp('DD'),time:timestamp('HH:mm:ss') }, finish: null, duration: null };
                             insertLogToDb(log);
                             db.collection('userData').updateOne({ user: 'username' },
-                            {
-                                $set: {
-                                    currentProject: projectName
-                                }
-                            }).then((suc) => resolve()).catch((e) => console.log(e));
+                                {
+                                    $set: {
+                                        currentProject: projectName
+                                    }
+                                }).then((suc) => resolve()).catch((e) => console.log(e));
                         } else {
-                            reject("Work on this project has already been started");
+                            reject("You are already working on " + result.currentProject);
                         }
                     } else {
                         if (result.currentProject) {
                             db.collection('userData').findOne({ user: 'username' }).then((result) => {
                                 db.collection('logs').findOne({ projectName: result.currentProject, finish: null })
                                     .then((log) => {
-                                        updateLog = { projectName: result.currentProject, finish: timestamp('YYYY/MM/DD/HH:mm:ss'), duration: subtractTimeStamps(timestamp('YYYY/MM/DD/HH:mm:ss'), log.start) }
+                                        const fin = {year:timestamp('YYYY'),month:timestamp('MM'),day:timestamp('DD'),time:timestamp('HH:mm:ss') };
+                                        updateLog = { projectName: result.currentProject, finish: fin,id:log._id, duration: subtractTimeStamps(fin, log.start) }
                                         updateLogInDb(updateLog);
                                         nullifyCurrentProject('username');
                                         resolve();
@@ -89,48 +86,34 @@ const addLog = function (projectName, activity) {
 
 
 
-const saveProjects = (projects) => {
-    const dataJson = JSON.stringify({ "current": currentProject, "recorded": projects });
-    MongoClient.connect(connectionUrl, { useNewUrlParser: true }, (error, MongoClient) => {
-        if (error) {
-            return console.log("DB connection failed");
-        }
-        const db = MongoClient.db(database);
-    });
-    //fs.writeFileSync('/Users/bogdanabaev/RandomProgramming/node/notes/timetracker.json', dataJson);
-}
 
 // log = {user:..., projectName:..., start:...,finish:...,duration:...}
 const insertLogToDb = (log) => {
-    //mongoUtils.connectToDb(() => {
-        const db = mongoUtils.getDb();
-        const addToCollection = db.collection('logs').insertOne(log);
+    const db = mongoUtils.getDb();
+    const addToCollection = db.collection('logs').insertOne(log);
 
-        addToCollection.then((suc) => {
-            console.log("DB updated");
-        }).catch((e) => console.log(e));
-    //});
+    addToCollection.then((suc) => {
+        console.log("DB updated");
+    }).catch((e) => console.log(e));
+
 }
 
 
 const updateLogInDb = (log) => {
-    //mongoUtils.connectToDb(() => {
     const db = mongoUtils.getDb();
 
     db.collection('logs').updateOne({
-        user: 'username',
-        projectName: log.projectName
+        _id: log.id
     }, {
             $set: {
                 finish: log.finish,
                 duration: log.duration
             }
-        }).then((suc) => console.log('updated'))
+        }).then((suc) => console.log(suc))
         .catch((e) => console.log(e));
-    // });
 }
 
-
+//
 const nullifyCurrentProject = (username) => {
     const db = mongoUtils.getDb();
     db.collection('userData').updateOne({
@@ -144,37 +127,49 @@ const nullifyCurrentProject = (username) => {
 }
 
 const removeProject = function (projectName) {
-    const data = loadLogs();
-    const projIndex = data.findIndex(function (projectDict) {
-        return projectDict.project == projectName;
-    })
-    if (projIndex != -1) {
-        data.splice(projIndex, 1);
-        saveProjects(data);
-        console.log("Success");
-    } else {
-        console.log("Note does not exist");
-    }
+    mongoUtils.connectToDb(
+        () => new Promise(function (resolve, reject) {
+            const db = mongoUtils.getDb();
+            db.collection('userData').updateOne({
+                user: 'username'
+            }, {
+                    $pull: {
+                        projectNames: projectName
+                    }
+                }).then((suc) => resolve())
+                .catch((e) => reject(e))
+        })
+    );
 }
 
 const listProjects = function () {
-    const data = loadLogs();
-    for (var i = 0; i < data.length; i++) {
-        console.log(`${data[i].project}\t`);
-    }
-
+    mongoUtils.connectToDb(
+        () => new Promise(function (resolve, reject) {
+            const db = mongoUtils.getDb();
+            db.collection('userData').findOne({ user: 'username' })
+                .then((suc) => {
+                    suc.projectNames.forEach((name) => console.log(name + '\t'));
+                    resolve();
+                })
+                .catch((e) => reject(e))
+        })
+    );
 }
 
 
-
-const subtractTimeStamps = function (stampTwo, stampOne) {
-    const timeOne = stampOne.toString().substring(11, stampOne.length);
-    const timeTwo = stampTwo.toString().substring(11, stampTwo.length);
-    const lstOne = timeOne.split(':');
-    const lstTwo = timeTwo.split(':');
-    var durationHour = parseInt(lstTwo[0] - lstOne[0]);
-    var durationMin = parseInt(lstTwo[1] - lstOne[1]);
-    var durationSec = parseInt(lstTwo[2] - lstOne[2]);
+//finish/start = {year:...,date:day/mon,time:...}
+const subtractTimeStamps = function (finish, start) {
+    const timesOne = start.time.split(':');
+    const timesTwo = finish.time.split(':');
+    var durationDay = parseInt(finish.day-start.day);
+    var durationHour = parseInt(timesTwo[0] - timesOne[0]);
+    var durationMin = parseInt(timesTwo[1] - timesOne[1]);
+    var durationSec = parseInt(timesTwo[2] - timesOne[2]);
+    if (durationHour < 0){
+        assert(durationDay > 0);
+        durationDay--;
+        durationHour = 24 + durationHour;
+    }
     if (durationMin < 0) {
         durationHour--;
         durationMin = 60 + durationMin;
@@ -183,48 +178,49 @@ const subtractTimeStamps = function (stampTwo, stampOne) {
         durationMin--;
         durationSec = 60 + durationSec;
     }
-    //console.log(`${durationHour}:${durationMin}:${durationSec}`);
     assert(durationHour >= 0);
+    console.log(`${durationHour}:${durationMin}:${durationSec}`);
     return `${durationHour}:${durationMin}:${durationSec}`;
 }
+ 
 
-//mode = week or today
-const report = function (mode) {
-    const data = loadLogs();
-    const today = timestamp('YYYY/MM/DD');
-    const result = [];
-    if (mode == 'today') {
-        data.forEach(element => {
-            var i = element.logs.length - 1;
-            while (i > -1 && element.logs[i].end && element.logs[i].end.substring(0, 10) == today) {
-                result.push(`Project ${element.project}: ${element.logs[i].duration}`);
-                i--;
-            }
-        });
-    }
-    console.log(result);
+//search only for todays tasks so far
+const report = function () {
+    mongoUtils.connectToDb(
+        () => new Promise(function (resolve, reject) {
+            const db = mongoUtils.getDb();
+            const today = timestamp('DD');
+            db.command({
+                find:"logs",
+                filter: {"start.day":today}
+            }, (err,result) => {
+                if( err){
+                    console.log(err);
+                } else {
+                    console.log(result.cursor.firstBatch);
+                }
+            });
+        })
+    );
 }
 
-
+//
 const signup = function (username) {
-    mongoUtils.connectToDb(() => {
-        const db = mongoUtils.getDb();
-        const checkUserNames = db.collection('userData').findOne({ user: username });
-        console.log("a");
-        checkUserNames.then((usr) => {
-            console.log("b");
-            if (usr) {
-                console.log("Username already exists");
-                return;
-            }
-            console.log("c");
-            db.collection('userData').insertOne({ user: 'username', projectNames: [], currentProject: null }).
-                then((_) => {
-                    console.log("Username registered")
-                    return;
-                }).catch((e) => console.log(e));
-        });
-    });
+    mongoUtils.connectToDb(
+        () => new Promise(function (resolve, reject) {
+            const db = mongoUtils.getDb();
+            const checkUserNames = db.collection('userData').findOne({ user: username });
+            checkUserNames.then((usr) => {
+                if (usr) {
+                    reject("Username already exists");
+                }
+                db.collection('userData').insertOne({ user: 'username', projectNames: [], currentProject: null }).
+                    then((_) => {
+                        resolve("Username registered")
+                    }).catch((e) => reject(e));
+            });
+        })
+    );
 }
 
 
