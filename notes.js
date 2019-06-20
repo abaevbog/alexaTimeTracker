@@ -8,71 +8,83 @@ const mongoUtils = require('./mongoUtils.js');
 
 var currentProject;
 
+// const createProject = function(title) {
+//     return createProjectPromise.then((_)=>{
+//         mongoUtils.getClient.close();
+//     }).catch((e) => console.log(e));
+// };
+
 const createProject = function (title) {
-    mongoUtils.connectToDb(() => {
-        const db = mongoUtils.getDb();
-        const getUser = db.collection('userData').findOne({ user: 'username' });
+    mongoUtils.connectToDb(
+        () => new Promise(function (resolve, reject) {
+            console.log(title);
+            const db = mongoUtils.getDb();
+            const getUser = db.collection('userData').findOne({ user: 'username' });
+            getUser.then((usr) => {
+                if (usr.projectNames.includes(title)) {
+                    reject("Project title already taken");
+                    return;
+                }
+                db.collection('userData').updateOne({
+                    user: 'username'
+                }, {
+                        $push: { projectNames: title }
+                    }).then((_) => {
+                        console.log("yay");
+                        resolve("Done!");
+                    });
 
-        getUser.then((usr) => {
-            if (usr.projectNames.includes(title)) {
-                console.log("Project title already taken");
-                return;
-            }
-            db.collection('userData').updateOne({
-                user: 'username'
-            }, {
-                    $push: { projectNames: title }
-                })
-
-            console.log("Done!");
-        }).catch((e) => console.log(e));
-    });
+                console.log("Done!");
+            }).catch((e) => console.log(e));
+        })
+    );
 }
 
-const addLog = function (projectName, activity, ) {
-    assert(activity == 'start' || activity == 'end');
+const addLog = function (projectName, activity) {
+    mongoUtils.connectToDb(
+        () => new Promise(function (resolve, reject) {
+            console.log(activity);
+            assert(activity == 'start' || activity == 'end');
+            const db = mongoUtils.getDb();
+            const searchUser = db.collection('userData').findOne({ user: 'username' });
+            searchUser.then((result) => {
+                if (result.projectNames.includes(projectName) || result.currentProject) {
 
-    mongoUtils.connectToDb(() => {
-        const db = mongoUtils.getDb();
-        const searchUser = db.collection('userData').findOne({ user: 'username' });
-        searchUser.then((result) => {
-            if (result.projectNames.includes(projectName) || result.currentProject) {
+                    if (activity == 'start') {
 
-                if (activity == 'start') {
-
-                    if (!result.currentProject) {
-                        log = { user: 'username', projectName: projectName, start: timestamp('YYYY/MM/DD/HH:mm:ss'), finish: null, duration: null };
-                        insertLogToDb(log);
-                        db.collection('userData').updateOne({ user: 'username' },
+                        if (!result.currentProject) {
+                            log = { user: 'username', projectName: projectName, start: timestamp('YYYY/MM/DD/HH:mm:ss'), finish: null, duration: null };
+                            insertLogToDb(log);
+                            db.collection('userData').updateOne({ user: 'username' },
                             {
                                 $set: {
                                     currentProject: projectName
                                 }
-                            }).then((suc) => console.log("set current prj")).catch((e) => console.log(e));
+                            }).then((suc) => resolve()).catch((e) => console.log(e));
+                        } else {
+                            reject("Work on this project has already been started");
+                        }
                     } else {
-                        console.log("Work on this project has already been started");
+                        if (result.currentProject) {
+                            db.collection('userData').findOne({ user: 'username' }).then((result) => {
+                                db.collection('logs').findOne({ projectName: result.currentProject, finish: null })
+                                    .then((log) => {
+                                        updateLog = { projectName: result.currentProject, finish: timestamp('YYYY/MM/DD/HH:mm:ss'), duration: subtractTimeStamps(timestamp('YYYY/MM/DD/HH:mm:ss'), log.start) }
+                                        updateLogInDb(updateLog);
+                                        nullifyCurrentProject('username');
+                                        resolve();
+                                    }).catch((e) => console.log(e));
+                            }).catch((e) => console.log(e));
+                        } else {
+                            reject("Work on this project has already been finished");
+                        }
                     }
                 } else {
-                    if (result.currentProject) {
-                        db.collection('userData').findOne({ user: 'username' }).then((result) => {
-                            console.log(result);
-                            db.collection('logs').findOne({ projectName: result.currentProject, finish: null })
-                                .then((log) => {
-                                    updateLog = { projectName: result.currentProject, finish: timestamp('YYYY/MM/DD/HH:mm:ss'), duration: subtractTimeStamps(timestamp('YYYY/MM/DD/HH:mm:ss'), log.start) }
-                                    updateLogInDb(updateLog);
-                                    console.log("Work finished");
-                                    nullifyCurrentProject('username');
-                                }).catch((e) => console.log(e));
-                        }).catch((e) => console.log(e));
-                    } else {
-                        console.log("Work on this project has already been finished");
-                    }
+                    reject("Project not found");
                 }
-            } else {
-                console.log("Project not found");
-            }
-        }).catch((e) => console.log(e));
-    });
+            }).catch((e) => reject(e));
+        })
+    );
 }
 
 
@@ -90,44 +102,44 @@ const saveProjects = (projects) => {
 
 // log = {user:..., projectName:..., start:...,finish:...,duration:...}
 const insertLogToDb = (log) => {
-    mongoUtils.connectToDb(() => {
+    //mongoUtils.connectToDb(() => {
         const db = mongoUtils.getDb();
         const addToCollection = db.collection('logs').insertOne(log);
 
         addToCollection.then((suc) => {
             console.log("DB updated");
         }).catch((e) => console.log(e));
-    });
+    //});
 }
 
 
 const updateLogInDb = (log) => {
     //mongoUtils.connectToDb(() => {
-        const db = mongoUtils.getDb();
+    const db = mongoUtils.getDb();
 
-        db.collection('logs').updateOne({
-            user: 'username',
-            projectName: log.projectName
-        }, {
-                $set: {
-                    finish: log.finish,
-                    duration: log.duration
-                }
-            }).then((suc) => console.log(suc))
-            .catch((e) => console.log(e));
-   // });
+    db.collection('logs').updateOne({
+        user: 'username',
+        projectName: log.projectName
+    }, {
+            $set: {
+                finish: log.finish,
+                duration: log.duration
+            }
+        }).then((suc) => console.log('updated'))
+        .catch((e) => console.log(e));
+    // });
 }
 
 
-const nullifyCurrentProject=(username) => {
+const nullifyCurrentProject = (username) => {
     const db = mongoUtils.getDb();
     db.collection('userData').updateOne({
-        user:username
+        user: username
     }, {
-        $set: {
-            currentProject:null
-        }
-    }).then((suc) => console.log("current project nulled"))
+            $set: {
+                currentProject: null
+            }
+        }).then((suc) => console.log("current project nulled"))
         .catch((e) => console.log(e))
 }
 
