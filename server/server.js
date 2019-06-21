@@ -10,45 +10,78 @@ app.get('', (req,res) => {
     res.send('hello');
 })
 
-app.get('/start', (req,res) => {
-    res.send('hello');
+app.post('/start', (req,res) => {
+    console.log(req.body);
+    var outcome = notes.addLog('start',req.body.projectName);
+    outcome.then((result) => {
+        res.send(result);
+    }).catch((e) => {
+        res.send(e)
+    });
 })
 
 app.get('/end', (req,res) => {
-    res.send('hello');
+    var outcome = notes.addLog('end');
+    outcome.then((result) => {
+        res.send(result);
+    }).catch((e) => {
+        res.send(e)
+    });
 })
 
-app.get('', (req,res) => {
-    res.send('hello');
+app.post('/signup', (req,res) => {
+    var outcome = notes.signup(req.body.username);
+    outcome.then((result) => {
+        res.send(result);
+    }).catch((e) => {
+        res.send(e)
+    });
 })
 
 app.post('/create', (req,res) => {
-    var x = notes.createProject(req.body.projectName)
-    res.send(x);
+    var outcome = notes.createProject(req.body.projectName);
+    outcome.then((result) => {
+        res.send(result);
+    }).catch((e) => {
+        res.send(e)
+    });
 })
 
-app.get('/delete', (req,res) => {
-    res.send('delete');
+app.post('/delete', (req,res) => {
+    var outcome = notes.removeProject(req.body.projectName);
+    outcome.then((result) => {
+        res.send(result);
+    }).catch((e) => {
+        res.send(e)
+    });
 })
 
 app.get('/ls', (req,res) => {
-    res.send('ls');
+    var outcome = notes.listProjects();
+    outcome.then((result) => {
+        res.send(result);
+    }).catch((e) => {
+        res.send(e)
+    });
 })
 
-app.get('/start', (req,res) => {
-    res.send('hello');
-})
-
-app.get('/end', (req,res) => {
-    res.send('hello');
-})
 
 app.get('/current', (req,res) => {
-    res.send('hello');
+    var outcome = notes.currentProject();
+    outcome.then((result) => {
+        res.send(result);
+    }).catch((e) => {
+        res.send(e)
+    });
 })
 
 app.get('/report', (req,res) => {
-    res.send('hello');
+    var outcome = notes.report();
+    outcome.then((result) => {
+        res.send(result);
+    }).catch((e) => {
+        res.send(e)
+    });
 })
 
 

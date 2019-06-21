@@ -10,7 +10,7 @@ yargs.command({
     'describe': 'work on project',
 
     handler: function(argv){
-        notes.addLog(argv.project,'start');
+        notes.addLog('start',argv.project);
     }
 });
 
@@ -20,7 +20,7 @@ yargs.command({
     'describe': 'finish working on current project',
 
     handler: function(argv){
-        notes.addLog(argv.project, 'end');
+        notes.addLog('end');
     }
 });
 

@@ -6,8 +6,6 @@ const { MongoClient, ObjectId } = require('mongodb');
 const connectionUrl = 'mongodb://127.0.0.1:27017';
 const mongoUtils = require('./mongoUtils.js');
 
-var currentProject;
-
 //
 const createProject = function (title) {
     return mongoUtils.connectToDb(
@@ -24,21 +22,18 @@ const createProject = function (title) {
                 }, {
                         $push: { projectNames: title }
                     }).then((_) => {
-                        console.log("yay");
-                        resolve("Done!");
+                        resolve("Project created!");
                     });
-
-                console.log("Done!");
             }).catch((e) => console.log(e));
         })
     );
 }
 
 //
-const addLog = function (projectName, activity) {
-    mongoUtils.connectToDb(
+const addLog = function (activity, projectName) {
+    return mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
-            console.log(activity);
+            console.log('project:'+projectName);
             assert(activity == 'start' || activity == 'end');
             const db = mongoUtils.getDb();
             const searchUser = db.collection('userData').findOne({ user: 'username' });
@@ -55,7 +50,7 @@ const addLog = function (projectName, activity) {
                                     $set: {
                                         currentProject: projectName
                                     }
-                                }).then((suc) => resolve()).catch((e) => console.log(e));
+                                }).then((suc) => resolve("Work on " +projectName+" started!")).catch((e) => console.log(e));
                         } else {
                             reject("You are already working on " + result.currentProject);
                         }
@@ -68,7 +63,7 @@ const addLog = function (projectName, activity) {
                                         updateLog = { projectName: result.currentProject, finish: fin,id:log._id, duration: subtractTimeStamps(fin, log.start) }
                                         updateLogInDb(updateLog);
                                         nullifyCurrentProject('username');
-                                        resolve();
+                                        resolve("Work on " + result.currentProject +" complete!");
                                     }).catch((e) => console.log(e));
                             }).catch((e) => console.log(e));
                         } else {
@@ -76,7 +71,7 @@ const addLog = function (projectName, activity) {
                         }
                     }
                 } else {
-                    reject("Project not found");
+                    reject("Either your work is complete or you are trying to work on non existing project");
                 }
             }).catch((e) => reject(e));
         })
@@ -126,7 +121,7 @@ const nullifyCurrentProject = (username) => {
 }
 
 const removeProject = function (projectName) {
-    mongoUtils.connectToDb(
+    return mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
             const db = mongoUtils.getDb();
             db.collection('userData').updateOne({
@@ -135,20 +130,20 @@ const removeProject = function (projectName) {
                     $pull: {
                         projectNames: projectName
                     }
-                }).then((suc) => resolve())
+                }).then((suc) => resolve("Project removed"))
                 .catch((e) => reject(e))
         })
     );
 }
 
 const listProjects = function () {
-    mongoUtils.connectToDb(
+    return mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
             const db = mongoUtils.getDb();
             db.collection('userData').findOne({ user: 'username' })
                 .then((suc) => {
                     suc.projectNames.forEach((name) => console.log(name + '\t'));
-                    resolve();
+                    resolve(suc.projectNames);
                 })
                 .catch((e) => reject(e))
         })
@@ -183,29 +178,53 @@ const subtractTimeStamps = function (finish, start) {
 }
  
 
+const dateSeverDaysAgoLastMonth=function(month,currentDate){
+    if([1,3,5,7,8,10,12].includes(month)){
+        return 31+currentDate;
+    } else if([4,6,9,11].includes(month)){
+        return 30+currentDate;
+    } else{
+        return 28+currentDate;
+    }
+}
+
 //search only for todays tasks so far
 const report = function () {
-    mongoUtils.connectToDb(
+    return mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
             const db = mongoUtils.getDb();
-            const {today, thisMonth,thisYear} =  {today:timestamp('DD'),month:timestamp('MM'),year:timestamp('YYYY')};  
-            const lastWeek = parseInt(today) - 7;
+            const {today, thisMonth,thisYear} =  {today:timestamp('DD'),thisMonth:timestamp('MM'),thisYear:timestamp('YYYY')};  
+            var lastWeek = parseInt(today) - 7;
+            var lastMonth = thisMonth;
+            var lastYear = thisYear;
+            if (lastWeek < 1){
+                console.log("AAAA");
+              lastMonth--;
+              if (lastMonth < 0){
+                  lastMonth = 0;
+                  lastYear--;
+              }
+              lastWeek = dateSeverDaysAgoLastMonth(lastMonth,lastWeek);       
+            }
+            console.log(lastWeek);
+            console.log(lastMonth);
+            console.log(lastYear);
+            assert(lastWeek>0 && lastMonth> 0 &&lastYear>0);
             db.command({
                 find:"logs",
                 filter: {
                  $and:[
                         {"start.day": { $gt: lastWeek.toString()} },
-                        {"start.day": { $lte: today} },
-                        {"start.moth": { $eq: thisMonth} },
-
+                        {"start.day": { $lte: today.toString()} },
+                        { $or: [ {"start.month": { $eq: thisMonth.toString()} },{"start.month": { $eq: lastMonth.toString()} }] } ,
+                        {$or: [ {"start.year": { $eq: thisYear.toString()} },{"start.year": { $eq: lastYear.toString()} }] } ,
                     ]  
                 }
             }, (err,result) => {
                 if( err){
                     reject(err);
                 } else {
-                    console.log(result.cursor.firstBatch);
-                    resolve();
+                    resolve(result.cursor.firstBatch);
                 }
             });
         })
@@ -213,16 +232,16 @@ const report = function () {
 }
 
 const getCurrentProjData=function(){
-    mongoUtils.connectToDb(
+    return mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
             const db = mongoUtils.getDb();
             db.collection('userData').findOne({user:'username'}).then((usr) => {
                 if (usr.currentProject){
                     console.log("Current project: " + usr.currentProject);
-                    resolve();
+                    resolve("Current project: " + usr.currentProject);
                 } else {
                     console.log("No current project");
-                    resolve();
+                    resolve("No current project");
                 }
             }).catch((e) => reject(e));
         })
@@ -233,7 +252,7 @@ const getCurrentProjData=function(){
 
 //
 const signup = function (username) {
-    mongoUtils.connectToDb(
+    return mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
             const db = mongoUtils.getDb();
             const checkUserNames = db.collection('userData').findOne({ user: username });

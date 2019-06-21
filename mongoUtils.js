@@ -7,12 +7,12 @@ var db;
 var dbClient;
 
 const connectToDb = function (doMoreStuff) {
-    MongoClient.connect(connectionUrl, { useNewUrlParser: true }).then(
+    return MongoClient.connect(connectionUrl, { useNewUrlParser: true }).then(
         (client) => {
             console.log('connectiong to db successful');
             db = client.db(database);
-            doMoreStuff().then((yes) => {
-                console.log('closing');
+            return doMoreStuff().then((yes) => {
+                console.log("resolved:"+yes);
                 client.close();
                 return yes;
             }).catch((e) => {
