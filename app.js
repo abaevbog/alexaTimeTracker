@@ -53,7 +53,7 @@ yargs.command({
     'command':'current',
     'describe': 'current project',
     handler: function(argv){
-        //notes.currentProject();
+        notes.currentProject();
     }
 });
 

@@ -14,12 +14,15 @@ const connectToDb = function (doMoreStuff) {
             doMoreStuff().then((yes) => {
                 console.log('closing');
                 client.close();
+                return yes;
             }).catch((e) => {
                 client.close();
                 console.log(e);
+                return e;
             });     
         }).catch((error) => {
             console.log(error);
+            return error;
         })
 }
 

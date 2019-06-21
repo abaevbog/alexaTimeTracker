@@ -10,7 +10,7 @@ var currentProject;
 
 //
 const createProject = function (title) {
-    mongoUtils.connectToDb(
+    return mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
             console.log(title);
             const db = mongoUtils.getDb();
@@ -18,7 +18,6 @@ const createProject = function (title) {
             getUser.then((usr) => {
                 if (usr.projectNames.includes(title)) {
                     reject("Project title already taken");
-                    return;
                 }
                 db.collection('userData').updateOne({
                     user: 'username'
@@ -189,20 +188,48 @@ const report = function () {
     mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
             const db = mongoUtils.getDb();
-            const today = timestamp('DD');
+            const {today, thisMonth,thisYear} =  {today:timestamp('DD'),month:timestamp('MM'),year:timestamp('YYYY')};  
+            const lastWeek = parseInt(today) - 7;
             db.command({
                 find:"logs",
-                filter: {"start.day":today}
+                filter: {
+                 $and:[
+                        {"start.day": { $gt: lastWeek.toString()} },
+                        {"start.day": { $lte: today} },
+                        {"start.moth": { $eq: thisMonth} },
+
+                    ]  
+                }
             }, (err,result) => {
                 if( err){
-                    console.log(err);
+                    reject(err);
                 } else {
                     console.log(result.cursor.firstBatch);
+                    resolve();
                 }
             });
         })
     );
 }
+
+const getCurrentProjData=function(){
+    mongoUtils.connectToDb(
+        () => new Promise(function (resolve, reject) {
+            const db = mongoUtils.getDb();
+            db.collection('userData').findOne({user:'username'}).then((usr) => {
+                if (usr.currentProject){
+                    console.log("Current project: " + usr.currentProject);
+                    resolve();
+                } else {
+                    console.log("No current project");
+                    resolve();
+                }
+            }).catch((e) => reject(e));
+        })
+    );
+}
+
+
 
 //
 const signup = function (username) {
@@ -229,7 +256,7 @@ module.exports = {
     addLog: addLog,
     removeProject: removeProject,
     listProjects: listProjects,
-    //currentProject: getCurrentProjData,
+    currentProject: getCurrentProjData,
     report: report,
     signup: signup
 }
