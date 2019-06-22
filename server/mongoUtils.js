@@ -12,7 +12,7 @@ const connectToDb = function (doMoreStuff) {
             console.log('connectiong to db successful');
             db = client.db(database);
             return doMoreStuff().then((yes) => {
-                console.log("resolved:"+yes);
+                console.log("resolved:");
                 client.close();
                 return yes;
             }).catch((e) => {
