@@ -1,5 +1,4 @@
-const notes = require('../notes')
-const bodyParser = require('body-parser');
+const notes = require('./timeTracker.js');
 
 const express = require('express');
 
