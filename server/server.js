@@ -10,9 +10,8 @@ app.get('', (req,res) => {
     res.send('hello');
 })
 
-app.post('/start', (req,res) => {
-    console.log(req.body);
-    var outcome = notes.addLog('start',req.body.projectName);
+app.get('/start', (req,res) => {
+    var outcome = notes.addLog('start',req.query.projectName);
     outcome.then((result) => {
         res.send(result);
     }).catch((e) => {
@@ -29,8 +28,8 @@ app.get('/end', (req,res) => {
     });
 })
 
-app.post('/signup', (req,res) => {
-    var outcome = notes.signup(req.body.username);
+app.get('/signup', (req,res) => {
+    var outcome = notes.signup(req.query.username);
     outcome.then((result) => {
         res.send(result);
     }).catch((e) => {
@@ -38,8 +37,8 @@ app.post('/signup', (req,res) => {
     });
 })
 
-app.post('/create', (req,res) => {
-    var outcome = notes.createProject(req.body.projectName);
+app.get('/create', (req,res) => {
+    var outcome = notes.createProject(req.query.projectName);
     outcome.then((result) => {
         res.send(result);
     }).catch((e) => {
@@ -47,8 +46,8 @@ app.post('/create', (req,res) => {
     });
 })
 
-app.post('/delete', (req,res) => {
-    var outcome = notes.removeProject(req.body.projectName);
+app.get('/delete', (req,res) => {
+    var outcome = notes.removeProject(req.query.projectName);
     outcome.then((result) => {
         res.send(result);
     }).catch((e) => {
