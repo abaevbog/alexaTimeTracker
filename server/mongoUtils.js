@@ -1,8 +1,9 @@
 
 const { MongoClient, ObjectId } = require('mongodb');
-const connectionUrl = 'mongodb://127.0.0.1:27017';
-const database = 'task_manager'
 
+const connectionUrl = process.env.DB_URL? process.env.DB_URL:'mongodb://mongo:27017/';
+//const connectionUrl = 'mongodb://127.0.0.1:27017';
+const database = 'task_manager'
 var db;
 var dbClient;
 
