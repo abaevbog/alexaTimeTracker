@@ -1,8 +1,8 @@
 
 const { MongoClient, ObjectId } = require('mongodb');
 
-const connectionUrl = process.env.DB_URL? process.env.DB_URL:'mongodb://mongo:27017/';
-//const connectionUrl = 'mongodb://127.0.0.1:27017';
+//const connectionUrl = process.env.DB_URL? process.env.DB_URL:'mongodb://mongo:27017/';
+const connectionUrl = 'mongodb://127.0.0.1:27017';
 const database = 'task_manager'
 var db;
 var dbClient;
@@ -13,7 +13,7 @@ const connectToDb = function (doMoreStuff) {
             console.log('connectiong to db successful');
             db = client.db(database);
             return doMoreStuff().then((yes) => {
-                console.log("resolved:");
+                console.log("resolved");
                 client.close();
                 return yes;
             }).catch((e) => {

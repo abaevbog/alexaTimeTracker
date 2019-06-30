@@ -38,6 +38,8 @@ const addLog = function (username, activity, projectName) {
             const db = mongoUtils.getDb();
             const searchUser = db.collection('userData').findOne({ user: username });
             searchUser.then((result) => {
+                console.log(result);
+                console.log(projectName);
                 if (result.projectNames.includes(projectName) || result.currentProject) {
 
                     if (activity == 'start') {
@@ -140,6 +142,7 @@ const removeProject = function (username, projectName) {
 }
 
 const listProjects = function (username) {
+    console.log(username);
     return mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
             if(!username){
@@ -239,6 +242,7 @@ const report = function (username) {
                 }}
                 
             ]).toArray().then((res) => {
+                console.log(res[0]);
                 resolve(res);
             }).catch((e) => {
                 reject(e);

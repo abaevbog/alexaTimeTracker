@@ -1,92 +1,145 @@
 const notes = require('./timeTracker.js');
 
 const express = require('express');
-const port = 3000;
+var graphqlHTTP = require('express-graphql');
+var { buildSchema } = require('graphql');
+const port = 4000;
 const app = express();
-app.use(express.json()); 
-app.listen(port, () => console.log(`Example app listening on port ${port}!`));
 
-app.get('', (req,res) => {
-    res.send('HALLO!');
-})
+var schema = buildSchema(`
+    type Date{
+        year:Int!
+        month: Int!
+        day: Int!
+        time:String!
+    }
 
-app.get('/start', (req,res) => {
-    const username = req.query.username;
-    var outcome = notes.addLog(username,'start',req.query.projectName);
-    outcome.then((result) => {
-        res.send(result);
+    type Session{
+        start: Date!
+        finish: Date!
+        duration: Int!
+    }
+
+    type Report{
+        _id: String!
+        timeSpent:Int!
+        workSessions: [Session]!
+    }
+
+    type TimeTracker {
+        username: String!
+        start(projectName:String!): String!
+        end: String!
+        create(projectName:String!): String!
+        remove(projectName:String!): String!
+        ls: [String]  
+        current: String!
+        report: [Report]!
+    }
+
+    type Query {
+        time(username: String!): TimeTracker
+        signup(username:String!): String!
+    }
+`);
+
+
+
+
+class TimeTracker{
+
+    constructor(user){
+        this.username = user.username;
+    }
+
+    start(project){
+        var outcome = notes.addLog(this.username,'start',project.projectName);
+        return outcome.then((result) => {
+            return(result);
+        }).catch((e) => {
+            return(e);
+        }); 
+    }
+
+    end(){
+        var outcome = notes.addLog(this.username,'end');
+        return outcome.then((result) => {
+            return(result);
+        }).catch((e) => {
+            return(e)
+        });
+    }
+
+
+    create(project){
+        var outcome = notes.createProject(this.username, project.projectName);
+        return outcome.then((result) => {
+            return(result);
+        }).catch((e) => {
+            return(e)
+        });
+    }
+
+    remove(project){
+        var outcome = notes.removeProject(this.username,project.projectName);
+        return outcome.then((result) => {
+            return(result);
+        }).catch((e) => {
+            return(e)
+        });
+    }
+
+    ls(){
+        var outcome = notes.listProjects(this.username);
+        return outcome.then((result) => {
+            return(result);
+        }).catch((e) => {
+            return(e)
+        });
+    }
+
+    current(){
+        var outcome = notes.currentProject(this.username);
+        return outcome.then((result) => {
+            return(result);
+        }).catch((e) => {
+            return(e)
+        });
+    }
+
+    report(){
+        var outcome = notes.report(this.username);
+        return outcome.then((result) => {
+            console.log(result);
+            return(result);
+        }).catch((e) => {
+            return(e)
+        });
+    }
+}
+signup=function(username){
+    var outcome = notes.signup(username);
+    return outcome.then((result) => {
+        return(result);
     }).catch((e) => {
-        res.send(e)
+        return(e)
     });
-})
+}
 
-app.get('/end', (req,res) => {
-    const username = req.query.username;
-    var outcome = notes.addLog(username,'end');
-    outcome.then((result) => {
-        res.send(result);
-    }).catch((e) => {
-        res.send(e)
-    });
-})
-
-app.get('/signup', (req,res) => {
-    var outcome = notes.signup(req.query.username);
-    outcome.then((result) => {
-        res.send(result);
-    }).catch((e) => {
-        res.send(e)
-    });
-})
-
-app.get('/create', (req,res) => {
-    const username = req.query.username;
-    var outcome = notes.createProject(username, req.query.projectName);
-    outcome.then((result) => {
-        res.send(result);
-    }).catch((e) => {
-        res.send(e)
-    });
-})
-
-app.get('/delete', (req,res) => {
-    const username = req.query.username;
-    var outcome = notes.removeProject(username,req.query.projectName);
-    outcome.then((result) => {
-        res.send(result);
-    }).catch((e) => {
-        res.send(e)
-    });
-})
-
-app.get('/ls', (req,res) => {
-    const username = req.query.username;
-    var outcome = notes.listProjects(username);
-    outcome.then((result) => {
-        res.send(result);
-    }).catch((e) => {
-        res.send(e)
-    });
-})
+var root = {
+    time: function (username) {
+      return new TimeTracker(username);
+    },
+    register:function(username){
+        return signup(username);
+    }
+  }
 
 
-app.get('/current', (req,res) => {
-    const username = req.query.username;
-    var outcome = notes.currentProject(username);
-    outcome.then((result) => {
-        res.send(result);
-    }).catch((e) => {
-        res.send(e)
-    });
-})
+app.use('/graphql', graphqlHTTP({
+    schema: schema,
+    rootValue: root,
+    graphiql: true,
+}));
 
-app.get('/report', (req,res) => {
-    const username = req.query.username;
-    var outcome = notes.report(username);
-    outcome.then((result) => {
-        res.send(result);
-    }).catch((e) => {
-        res.send(e)
-    });
-})
-
+app.listen(port, () => console.log(`Time tracker listening on port ${port}!`));
