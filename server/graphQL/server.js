@@ -1,17 +1,51 @@
-const cors = require('cors');
-const express = require('express');
-const { makeExecutableSchema } = require('graphql-tools');
-const bodyParser = require('body-parser');
-const { ApolloServer } = require('apollo-server-express');
+var express = require('express');
+var graphqlHTTP = require('express-graphql');
+var { buildSchema } = require('graphql');
 
-const port = process.env.PORT || 3000;
-const app = express();
-const fs = require('fs');
-const typeDefs = fs.readFileSync('./schema.graphql', { encoding: 'utf-8' });
-const resolvers = require('./resolvers');
+// Construct a schema, using GraphQL schema language
+var schema = buildSchema(`
+  type RandomDie {
+    numSides: Int!
+    rollOnce: Int!
+    roll(numRolls: Int!): [Int]
+  }
 
-const schema = makeExecutableSchema({ typeDefs, resolvers })
-app.use(cors(), bodyParser.json());
-//app.use('/graphql', graphqlExpress({ schema }))
-//app.use('/graphiql', graphiqlExpress({ endpointURL: '/graphql' }))
-app.listen(port, () => console.info(`Server started on port ${port}`));
+  type Query {
+    getDie(numSides: Int): RandomDie
+  }
+`);
+
+// This class implements the RandomDie GraphQL type
+class RandomDie {
+  constructor(numSides) {
+    this.numSides = numSides;
+  }
+
+  rollOnce() {
+    return 1 + Math.floor(Math.random() * this.numSides);
+  }
+
+  roll({numRolls}) {
+    var output = [];
+    for (var i = 0; i < numRolls; i++) {
+      output.push(this.rollOnce());
+    }
+    return output;
+  }
+}
+
+// The root provides the top-level API endpoints
+var root = {
+  getDie: function ({numSides}) {
+    return new RandomDie(numSides || 6);
+  }
+}
+
+var app = express();
+app.use('/graphql', graphqlHTTP({
+  schema: schema,
+  rootValue: root,
+  graphiql: true,
+}));
+app.listen(4000);
+console.log('Running a GraphQL API server at localhost:4000/graphql');
