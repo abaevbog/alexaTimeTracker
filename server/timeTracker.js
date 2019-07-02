@@ -45,7 +45,7 @@ const addLog = function (username, activity, projectName) {
                     if (activity == 'start') {
 
                         if (!result.currentProject) {
-                            log = { user: username, projectName: projectName, start: { year: timestamp('YYYY'), month: timestamp('MM'), day: timestamp('DD'), time: timestamp('HH:mm:ss') }, finish: null, duration: null };
+                            log = { user: username, projectName: projectName, start: { year: Number(timestamp('YYYY')), month: Number(timestamp('MM')), day: Number(timestamp('DD')), time: timestamp('HH:mm:ss') }, finish: null, duration: null };
                             insertLogToDb(log);
                             db.collection('userData').updateOne({ user: username },
                                 {
@@ -61,7 +61,7 @@ const addLog = function (username, activity, projectName) {
                             db.collection('userData').findOne({ user: username }).then((result) => {
                                 db.collection('logs').findOne({ projectName: result.currentProject, finish: null })
                                     .then((log) => {
-                                        const fin = { year: timestamp('YYYY'), month: timestamp('MM'), day: timestamp('DD'), time: timestamp('HH:mm:ss') };
+                                        const fin = { year: Number(timestamp('YYYY')), month: Number(timestamp('MM')), day: Number(timestamp('DD')), time: timestamp('HH:mm:ss') };
                                         updateLog = { projectName: result.currentProject, finish: fin, id: log._id, duration: durationInMins(subtractTimeStamps(fin, log.start)) }
                                         updateLogInDb(updateLog);
                                         nullifyCurrentProject(username);
@@ -228,10 +228,11 @@ const report = function (username) {
             db.collection('logs').aggregate([
                 {'$match': {
                     $and:[
-                           {"start.day": { $gt: lastWeek.toString()} },
-                           {"start.day": { $lte: today.toString()} },
+                           { $or: [
+                                {$and: [ {"start.day": { $gt: lastWeek} },{"start.month": { $eq: lastMonth} }] } ,
+                                {$and: [ {"start.day": { $lte: today} },{"start.month": { $eq: thisMonth} }] } ,
+                           ]},
                            {"user": { $eq: username} },
-                           { $or: [ {"start.month": { $eq: thisMonth.toString()} },{"start.month": { $eq: lastMonth.toString()} }] } ,
                            {$or: [ {"start.year": { $eq: thisYear.toString()} },{"start.year": { $eq: lastYear.toString()} }] } ,
                        ]  
                    } },
@@ -242,7 +243,7 @@ const report = function (username) {
                 }}
                 
             ]).toArray().then((res) => {
-                console.log(res[0]);
+                console.log(res);
                 resolve(res);
             }).catch((e) => {
                 reject(e);
@@ -284,12 +285,12 @@ const signup = function (username) {
             const db = mongoUtils.getDb();
             const checkUserNames = db.collection('userData').findOne({ user: username });
             checkUserNames.then((usr) => {
+                console.log(usr);
                 if (usr) {
                     reject("Username already exists");
                 }
-                db.collection('userData').insertOne({ user: 'username', projectNames: [], currentProject: null }).
+                db.collection('userData').insertOne({ user: username, projectNames: [], currentProject: null }).
                     then((_) => {
-
                         resolve("Username registered")
                     }).catch((e) => reject(e));
             });

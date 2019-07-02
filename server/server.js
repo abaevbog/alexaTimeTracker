@@ -130,7 +130,7 @@ var root = {
     time: function (username) {
       return new TimeTracker(username);
     },
-    register:function(username){
+    signup:function(username){
         return signup(username);
     }
   }
