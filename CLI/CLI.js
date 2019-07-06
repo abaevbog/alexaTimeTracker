@@ -1,10 +1,12 @@
-const chalk = require('chalk')
 const yargs = require('yargs')
 const request = require('request')
 const fs = require('fs');
-host = "http://localhost:4000";
+//host = "http://localhost:4000";
+host = "http://18.233.168.151:80";
 path = "/Users/bogdanabaev/RandomProgramming/node/notes/CLI/"
 
+
+// BUG: BREAKS WITH SIGNUP CAUSE THERE IS NO 'TIME' AFTER DATA
 const sendQuery = function (query, username, signup) {
     if (username) {
         request.post({
@@ -22,6 +24,7 @@ const sendQuery = function (query, username, signup) {
                 if (signup) {
                     fs.writeFileSync(path + '.username.txt', username);
                 }
+                console.log(result.body);
                 const data = JSON.parse(result.body).data.time;
                 const key = Object.keys(data)[0];
                 console.log(data[`${key}`]);
