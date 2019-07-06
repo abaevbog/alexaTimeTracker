@@ -6,8 +6,9 @@ phases:
       nodejs: 10
   pre_build:
     commands:
-      - echo Nothing to do in the pre_build phase...
+      - echo pre_build phase...
       - REPOSITORY_URI="998539017710.dkr.ecr.us-east-1.amazonaws.com/timetracker"
+      - $(aws ecr get-login --region $AWS_DEFAULT_REGION --no-include-email)
   build:
     commands:
       - echo Build started on `date`
@@ -16,8 +17,8 @@ phases:
   post_build:
     commands:
       - echo Build completed on `date`
-      - docker tag timetracker:latest "998539017710.dkr.ecr.us-east-1.amazonaws.com/timetracker:latest"
-      - docker push
+      - docker tag timetracker:latest 998539017710.dkr.ecr.us-east-1.amazonaws.com/timetracker:latest
+      - docker push 998539017710.dkr.ecr.us-east-1.amazonaws.com/timetracker:latest
       - cd .. 
       - printf '[{"name":"timetracker","imageUri":"998539017710.dkr.ecr.us-east-1.amazonaws.com/timetracker"}]' > imagedefinitions.json
 artifacts:
