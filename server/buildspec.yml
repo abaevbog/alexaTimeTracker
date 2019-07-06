@@ -20,7 +20,7 @@ phases:
       - docker tag timetracker:latest 998539017710.dkr.ecr.us-east-1.amazonaws.com/timetracker:latest
       - docker push 998539017710.dkr.ecr.us-east-1.amazonaws.com/timetracker:latest
       - cd .. 
-      - printf '[{"name":"timetracker","imageUri":"998539017710.dkr.ecr.us-east-1.amazonaws.com/timetracker"}]' > imagedefinitions.json
+      - printf '[{"name":"timetracker:2","imageUri":"998539017710.dkr.ecr.us-east-1.amazonaws.com/timetracker"}]' > imagedefinitions.json
 artifacts:
   files: imagedefinitions.json
     
