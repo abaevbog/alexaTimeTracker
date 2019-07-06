@@ -3,7 +3,7 @@ const notes = require('./timeTracker.js');
 const express = require('express');
 var graphqlHTTP = require('express-graphql');
 var { buildSchema } = require('graphql');
-const port = 4000;
+const port = 3000;
 const app = express();
 
 var schema = buildSchema(`
