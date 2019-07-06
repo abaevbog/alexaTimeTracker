@@ -16,7 +16,8 @@ phases:
   post_build:
     commands:
       - echo Build completed on `date`
+      - cd .. 
       - printf '[{"name":"timetracker","imageUri":"998539017710.dkr.ecr.us-east-1.amazonaws.com/timetracker"}]' > imagedefinitions.json
 artifacts:
-  files: server/imagedefinitions.json
+  files: imagedefinitions.json
     
