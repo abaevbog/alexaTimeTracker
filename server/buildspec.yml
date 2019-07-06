@@ -7,6 +7,7 @@ phases:
   pre_build:
     commands:
       - echo Nothing to do in the pre_build phase...
+      - REPOSITORY_URI="998539017710.dkr.ecr.us-east-1.amazonaws.com/timetracker"
   build:
     commands:
       - echo Build started on `date`
@@ -17,7 +18,5 @@ phases:
       - echo Build completed on `date`
       - printf '[{"name":"timetracker","imageUri":"998539017710.dkr.ecr.us-east-1.amazonaws.com/timetracker"}]' > imagedefinitions.json
 artifacts:
-  files:
-      server/**/*
-      imagedefinitions.json
+  files: imagedefinitions.json
     
