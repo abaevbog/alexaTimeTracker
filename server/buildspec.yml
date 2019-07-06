@@ -16,6 +16,8 @@ phases:
   post_build:
     commands:
       - echo Build completed on `date`
+      - docker tag timetracker:latest "998539017710.dkr.ecr.us-east-1.amazonaws.com/timetracker:latest"
+      - docker push
       - cd .. 
       - printf '[{"name":"timetracker","imageUri":"998539017710.dkr.ecr.us-east-1.amazonaws.com/timetracker"}]' > imagedefinitions.json
 artifacts:
