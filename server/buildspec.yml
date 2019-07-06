@@ -1,4 +1,4 @@
-version: 0.1
+version: 0.2
 
 phases:
   install:
@@ -16,4 +16,5 @@ phases:
       - echo Build completed on `date`
 artifacts:
   files:
+      server/**/*
     
