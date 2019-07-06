@@ -22,7 +22,9 @@ const sendQuery = function (query, username, signup) {
                 if (signup) {
                     fs.writeFileSync(path + '.username.txt', username);
                 }
-                return result.body;
+                const data = JSON.parse(result.body).data.time;
+                const key = Object.keys(data)[0];
+                console.log(data[`${key}`]);
             }
         })
     } else {
@@ -163,7 +165,7 @@ yargs.command({
 });
 
 yargs.command({
-    'command': 'report',
+    'command': 'report <days>',
     'describe': 'report daily or weekly work progress',
     handler: function (argv) {
         var username = '';
@@ -171,7 +173,7 @@ yargs.command({
             username = fs.readFileSync(path + '.username.txt').toString();
             var query = `{
                 time(username: "${username}"){
-                    report{ 
+                    report(days: "${argv.days}"){ 
                         _id
                         timeSpent
                         workSessions{

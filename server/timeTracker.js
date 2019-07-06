@@ -204,7 +204,7 @@ const dateSeverDaysAgoLastMonth = function (month, currentDate) {
 }
 
 //search only for todays tasks so far
-const report = function (username) {
+const report = function (username, days) {
     return mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
             if(!username){
@@ -212,7 +212,7 @@ const report = function (username) {
             }
             const db = mongoUtils.getDb();
             const { today, thisMonth, thisYear } = { today: timestamp('DD'), thisMonth: timestamp('MM'), thisYear: timestamp('YYYY') };
-            var lastWeek = parseInt(today) - 7;
+            var lastWeek = parseInt(today) - days;
             var lastMonth = thisMonth;
             var lastYear = thisYear;
             if (lastWeek < 1) {

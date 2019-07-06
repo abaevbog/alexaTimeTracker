@@ -107,8 +107,8 @@ class TimeTracker{
         });
     }
 
-    report(){
-        var outcome = notes.report(this.username);
+    report(days){
+        var outcome = notes.report(this.username,days);
         return outcome.then((result) => {
             console.log(result);
             return(result);
