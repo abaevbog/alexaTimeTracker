@@ -204,7 +204,6 @@ const dateSeverDaysAgoLastMonth = function (month, currentDate) {
     }
 }
 
-//search only for todays tasks so far
 const report = function (username, days) {
     return mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
@@ -216,7 +215,7 @@ const report = function (username, days) {
             var lastWeek = parseInt(today) - days;
             var lastMonth = thisMonth;
             var lastYear = thisYear;
-            console.log(days);
+            console.log(lastWeek);
             if (lastWeek < 1) {
                 console.log("AAAA");
                 lastMonth--;
@@ -232,11 +231,11 @@ const report = function (username, days) {
                 {'$match': {
                     $and:[
                            { $or: [
-                                {$and: [ {"start.day": { $gt: lastWeek} },{"start.month": { $eq: lastMonth} }] } ,
-                                {$and: [ {"start.day": { $lte: today} },{"start.month": { $eq: thisMonth} }] } ,
+                                {$and: [ {"start.day": { $gt: parseInt(lastWeek)} },{"start.month": { $eq: parseInt(lastMonth)} }] } ,
+                                {$and: [ {"start.day": { $lte:parseInt( today)} },{"start.month": { $eq: parseInt(thisMonth)} }] } ,
                            ]},
-                           {"user": { $eq: username} },
-                           {$or: [ {"start.year": { $eq: thisYear.toString()} },{"start.year": { $eq: lastYear.toString()} }] } ,
+                          {"user": { $eq: username} },
+                           {$or: [ {"start.year": { $eq: parseInt(thisYear)} },{"start.year": { $eq: parseInt(lastYear)} }] } ,
                        ]  
                    } },
                 {$group: {
