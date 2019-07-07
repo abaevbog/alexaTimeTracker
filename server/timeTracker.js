@@ -10,13 +10,13 @@ const createProject = function (username, title) {
                 reject("User not signed in");
             }
             const db = mongoUtils.getDb();
-            const getUser = db.collection('userData').findOne({ user: username});
+            const getUser = db.collection('userData').findOne({ "user.username": username});
             getUser.then((usr) => {
                 if (usr.projectNames.includes(title)) {
                     reject("Project title already taken");
                 }
                 db.collection('userData').updateOne({
-                    user: 'username'
+                    "user.username": 'username'
                 }, {
                         $push: { projectNames: title }
                     }).then((_) => {
@@ -36,7 +36,7 @@ const addLog = function (username, activity, projectName) {
             }
             assert(activity == 'start' || activity == 'end');
             const db = mongoUtils.getDb();
-            const searchUser = db.collection('userData').findOne({ user: username });
+            const searchUser = db.collection('userData').findOne({ "user.username": username });
             searchUser.then((result) => {
                 console.log(result);
                 console.log(projectName);
@@ -47,7 +47,7 @@ const addLog = function (username, activity, projectName) {
                         if (!result.currentProject) {
                             log = { user: username, projectName: projectName, start: { year: Number(timestamp('YYYY')), month: Number(timestamp('MM')), day: Number(timestamp('DD')), time: timestamp('HH:mm:ss') }, finish: null, duration: null };
                             insertLogToDb(log);
-                            db.collection('userData').updateOne({ user: username },
+                            db.collection('userData').updateOne({ "user.username": username },
                                 {
                                     $set: {
                                         currentProject: projectName
@@ -58,7 +58,7 @@ const addLog = function (username, activity, projectName) {
                         }
                     } else {
                         if (result.currentProject) {
-                            db.collection('userData').findOne({ user: username }).then((result) => {
+                            db.collection('userData').findOne({ "user.username": username }).then((result) => {
                                 db.collection('logs').findOne({ projectName: result.currentProject, finish: null })
                                     .then((log) => {
                                         const fin = { year: Number(timestamp('YYYY')), month: Number(timestamp('MM')), day: Number(timestamp('DD')), time: timestamp('HH:mm:ss') };
@@ -113,7 +113,7 @@ const updateLogInDb = (log) => {
 const nullifyCurrentProject = (username) => {
     const db = mongoUtils.getDb();
     db.collection('userData').updateOne({
-        user: username
+        "user.username": username
     }, {
             $set: {
                 currentProject: null
@@ -130,7 +130,7 @@ const removeProject = function (username, projectName) {
             }
             const db = mongoUtils.getDb();
             db.collection('userData').updateOne({
-                user: username
+                "user.username": username
             }, {
                     $pull: {
                         projectNames: projectName
@@ -149,8 +149,9 @@ const listProjects = function (username) {
                 reject("User not signed in");
             }
             const db = mongoUtils.getDb();
-            db.collection('userData').findOne({ user: username })
+            db.collection('userData').findOne({ "user.username": username })
                 .then((suc) => {
+                    console.log(suc);
                     suc.projectNames.forEach((name) => console.log(name + '\t'));
                     resolve(suc.projectNames);
                 })
@@ -215,6 +216,7 @@ const report = function (username, days) {
             var lastWeek = parseInt(today) - days;
             var lastMonth = thisMonth;
             var lastYear = thisYear;
+            console.log(days);
             if (lastWeek < 1) {
                 console.log("AAAA");
                 lastMonth--;
@@ -224,6 +226,7 @@ const report = function (username, days) {
                 }
                 lastWeek = dateSeverDaysAgoLastMonth(lastMonth, lastWeek);
             }
+            console.log(`${lastWeek > 0} ${lastMonth > 0} && ${lastYear > 0} && ${today>0} && ${thisMonth>0} && ${thisYear>0}`)
             assert(lastWeek > 0 && lastMonth > 0 && lastYear > 0 &&today>0 &&thisMonth>0 &&thisYear>0);
             db.collection('logs').aggregate([
                 {'$match': {
@@ -260,7 +263,7 @@ const getCurrentProjData = function (username) {
                 reject("User not signed in");
             }
             const db = mongoUtils.getDb();
-            db.collection('userData').findOne({ user: username }).then((usr) => {
+            db.collection('userData').findOne({ "user.username": username }).then((usr) => {
                 if (usr.currentProject) {
                     console.log("Current project: " + usr.currentProject);
                     resolve("Current project: " + usr.currentProject);
@@ -283,16 +286,17 @@ const signup = function (username) {
                 reject("User must not be null");
             }
             const db = mongoUtils.getDb();
-            const checkUserNames = db.collection('userData').findOne({ user: username });
+            const checkUserNames = db.collection('userData').findOne({ "user.username": username});
             checkUserNames.then((usr) => {
                 console.log(usr);
                 if (usr) {
                     reject("Username already exists");
-                }
-                db.collection('userData').insertOne({ user: username, projectNames: [], currentProject: null }).
+                } else {
+                    db.collection('userData').insertOne({ user: username, projectNames: [], currentProject: null }).
                     then((_) => {
                         resolve("Username registered")
                     }).catch((e) => reject(e));
+                }
             });
         })
     );

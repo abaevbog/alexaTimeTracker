@@ -34,7 +34,7 @@ var schema = buildSchema(`
         remove(projectName:String!): String!
         ls: [String]  
         current: String!
-        report: [Report]!
+        report(days:Int!): [Report]!
     }
 
     type Query {
@@ -108,7 +108,7 @@ class TimeTracker{
     }
 
     report(days){
-        var outcome = notes.report(this.username,days);
+        var outcome = notes.report(this.username,days.days);
         return outcome.then((result) => {
             console.log(result);
             return(result);
