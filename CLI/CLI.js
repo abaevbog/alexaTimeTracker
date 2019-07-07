@@ -1,12 +1,13 @@
 const yargs = require('yargs')
 const request = require('request')
 const fs = require('fs');
-//host = "http://localhost:4000";
+//host = "http://localhost:3000";
 host = "http://18.233.168.151:80";
 path = "/Users/bogdanabaev/RandomProgramming/node/notes/CLI/"
 
 
 // BUG: BREAKS WITH SIGNUP CAUSE THERE IS NO 'TIME' AFTER DATA
+//BUG: breaks when send request with nonexisting user name
 const sendQuery = function (query, username, signup) {
     if (username) {
         request.post({
@@ -176,7 +177,7 @@ yargs.command({
             username = fs.readFileSync(path + '.username.txt').toString();
             var query = `{
                 time(username: "${username}"){
-                    report(days: "${argv.days}"){ 
+                    report(days: ${argv.days}){ 
                         _id
                         timeSpent
                         workSessions{
@@ -213,6 +214,7 @@ yargs.command({
                 if (err) {
                     console.log(err);
                 } else {
+                    console.log(result.body);
                     const dict = JSON.parse(result.body).data.time.report;
                     for (var project in dict) {
                         console.log(project);
