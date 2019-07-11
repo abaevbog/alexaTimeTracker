@@ -4,17 +4,22 @@ const mongoUtils = require('./mongoUtils.js');
 const fs = require('fs');
 
 
-const createProject = function (username, title) {
+const createProject =  function (username, title) {
     return mongoUtils.connectToDb(
-        () => new Promise(function (resolve, reject) {
+        () => new Promise(async function (resolve, reject) {
             if(!username){
                 reject("User not signed in");
             }
-            const db = mongoUtils.getDb();
-            const getUser = db.collection('userData').findOne({ "user.username": username});
-            getUser.then((usr) => {
+            const db = await mongoUtils.getDb();
+            var usr = await db.collection('userData').findOne({ "user.username": username});
+            
+                if (!usr){
+                    await db.collection('userData').insertOne({ user: {username:username}, projectNames: [], currentProject: null });
+                    usr ={ user: {username:username}, projectNames: [], currentProject: null }  
+                }
                 if (usr.projectNames.includes(title)) {
                     reject("Project title already taken");
+                    return;
                 }
                 db.collection('userData').updateOne({
                     "user.username": 'username'
@@ -23,7 +28,6 @@ const createProject = function (username, title) {
                     }).then((_) => {
                         resolve("Project created!");
                     });
-            }).catch((e) => console.log(e));
         })
     );
 }
@@ -31,52 +35,51 @@ const createProject = function (username, title) {
 //
 const addLog = function (username, activity, projectName) {
     return mongoUtils.connectToDb(
-        () => new Promise(function (resolve, reject) {
-            if(!username){
-                reject("User not signed in");
-            }
+        () => new Promise(async function (resolve, reject) {          
             assert(activity == 'start' || activity == 'end');
             const db = mongoUtils.getDb();
-            const searchUser = db.collection('userData').findOne({ "user.username": username });
-            searchUser.then((result) => {
-                console.log(result);
-                console.log(projectName);
-                if (result.projectNames.includes(projectName) || result.currentProject) {
+            const result = await db.collection('userData').findOne({ "user.username": username });
+            if (!result){
+                reject("Username not found");
+                return;
+            }
+            console.log(result);
+            console.log(projectName);
+            if (result.projectNames.includes(projectName) || result.currentProject) {
 
-                    if (activity == 'start') {
+                if (activity == 'start') {
 
-                        if (!result.currentProject) {
-                            log = { user: username, projectName: projectName, start: { year: Number(timestamp('YYYY')), month: Number(timestamp('MM')), day: Number(timestamp('DD')), time: timestamp('HH:mm:ss') }, finish: null, duration: null };
-                            insertLogToDb(log);
-                            db.collection('userData').updateOne({ "user.username": username },
-                                {
-                                    $set: {
-                                        currentProject: projectName
-                                    }
-                                }).then((suc) => resolve("Work on " + projectName + " started!")).catch((e) => console.log(e));
-                        } else {
-                            reject("You are already working on " + result.currentProject);
-                        }
+                    if (!result.currentProject) {
+                        log = { user: username, projectName: projectName, start: { year: Number(timestamp('YYYY')), month: Number(timestamp('MM')), day: Number(timestamp('DD')), time: timestamp('HH:mm:ss') }, finish: null, duration: null };
+                        insertLogToDb(log);
+                        db.collection('userData').updateOne({ "user.username": username },
+                            {
+                                $set: {
+                                    currentProject: projectName
+                                }
+                            }).then((suc) => resolve("Work on " + projectName + " started!")).catch((e) => console.log(e));
                     } else {
-                        if (result.currentProject) {
-                            db.collection('userData').findOne({ "user.username": username }).then((result) => {
-                                db.collection('logs').findOne({ projectName: result.currentProject, finish: null })
-                                    .then((log) => {
-                                        const fin = { year: Number(timestamp('YYYY')), month: Number(timestamp('MM')), day: Number(timestamp('DD')), time: timestamp('HH:mm:ss') };
-                                        updateLog = { projectName: result.currentProject, finish: fin, id: log._id, duration: durationInMins(subtractTimeStamps(fin, log.start)) }
-                                        updateLogInDb(updateLog);
-                                        nullifyCurrentProject(username);
-                                        resolve("Work on " + result.currentProject + " complete!");
-                                    }).catch((e) => console.log(e));
-                            }).catch((e) => console.log(e));
-                        } else {
-                            reject("Work on this project has already been finished");
-                        }
+                        reject("You are already working on " + result.currentProject);
                     }
                 } else {
-                    reject("Either your work is complete or you are trying to work on non existing project");
+                    if (result.currentProject) {
+                        db.collection('userData').findOne({ "user.username": username }).then((result) => {
+                            db.collection('logs').findOne({ projectName: result.currentProject, finish: null })
+                                .then((log) => {
+                                    const fin = { year: Number(timestamp('YYYY')), month: Number(timestamp('MM')), day: Number(timestamp('DD')), time: timestamp('HH:mm:ss') };
+                                    updateLog = { projectName: result.currentProject, finish: fin, id: log._id, duration: durationInMins(subtractTimeStamps(fin, log.start)) }
+                                    updateLogInDb(updateLog);
+                                    nullifyCurrentProject(username);
+                                    resolve("Work on " + result.currentProject + " complete!");
+                                }).catch((e) => console.log(e));
+                        }).catch((e) => console.log(e));
+                    } else {
+                        reject("Work on this project has already been finished");
+                    }
                 }
-            }).catch((e) => reject(e));
+            } else {
+                reject("Either your work is complete or you are trying to work on non existing project");
+            }
         })
     );
 }
@@ -125,9 +128,9 @@ const nullifyCurrentProject = (username) => {
 
 const removeProject = function (username, projectName) {
     return mongoUtils.connectToDb(
-        () => new Promise(function (resolve, reject) {
+        () => new Promise(async function (resolve, reject) {
             if(!username){
-                reject("User not signed in");
+                reject("User not found");
             }
             const db = mongoUtils.getDb();
             db.collection('userData').updateOne({
@@ -136,25 +139,32 @@ const removeProject = function (username, projectName) {
                     $pull: {
                         projectNames: projectName
                     }
-                }).then((suc) => resolve("Project removed"))
+                }).then((suc) => {
+                    suc.matchedCount ==0 ? reject("You are new to time tracker. Create a project first")  :  
+                    suc.modifiedCount >0 ? resolve("Project removed"): reject("Project does not exist");
+                })
                 .catch((e) => reject(e))
         })
     );
 }
 
 const listProjects = function (username) {
-    console.log(username);
     return mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
             if(!username){
-                reject("User not signed in");
+                reject("User not provided");
             }
             const db = mongoUtils.getDb();
             db.collection('userData').findOne({ "user.username": username })
-                .then((suc) => {
+                .then(async function(suc) {
+                    var result = [];
                     console.log(suc);
-                    suc.projectNames.forEach((name) => console.log(name + '\t'));
-                    resolve(suc.projectNames);
+                    if (!suc){
+                        await db.collection('userData').insertOne({ user: {username:username}, projectNames: [], currentProject: null });
+                    } else {
+                        result = suc.projectNames;
+                    }
+                    resolve(result);
                 })
                 .catch((e) => reject(e))
         })
@@ -207,16 +217,25 @@ const dateSeverDaysAgoLastMonth = function (month, currentDate) {
 
 const report = function (username, days) {
     return mongoUtils.connectToDb(
-        () => new Promise(function (resolve, reject) {
+        () => new Promise(async function (resolve, reject) {
             if(!username){
-                reject("User not signed in");
+                reject("Username empty");
+                return;
             }
             const db = mongoUtils.getDb();
+            var usr = await db.collection('userData').findOne({ "user.username": username});
+            
+            if (!usr){
+                await db.collection('userData').insertOne({ user: {username:username}, projectNames: [], currentProject: null });
+                usr ={ user: {username:username}, projectNames: [], currentProject: null }  
+                resolve(["No recent projects"]);
+            }
+            
             const { today, thisMonth, thisYear } = { today: timestamp('DD'), thisMonth: timestamp('MM'), thisYear: timestamp('YYYY') };
             var lastWeek = parseInt(today) - days;
             var lastMonth = thisMonth;
             var lastYear = thisYear;
-            console.log(lastWeek);
+            
             if (lastWeek < 1) {
                 console.log("AAAA");
                 lastMonth--;
@@ -260,10 +279,15 @@ const getCurrentProjData = function (username) {
     return mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
             if(!username){
-                reject("User not signed in");
+                reject("Empty username");
             }
             const db = mongoUtils.getDb();
-            db.collection('userData').findOne({ "user.username": username }).then((usr) => {
+            db.collection('userData').findOne({ "user.username": username }).then(async function(usr) {
+                if (!usr){
+                    await db.collection('userData').insertOne({ user: {username:username}, projectNames: [], currentProject: null });  
+                    resolve("No current project");
+                    return; 
+                }     
                 if (usr.currentProject) {
                     console.log("Current project: " + usr.currentProject);
                     resolve("Current project: " + usr.currentProject);
