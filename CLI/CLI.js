@@ -1,13 +1,15 @@
 const yargs = require('yargs')
 const request = require('request')
 const fs = require('fs');
-host = "http://localhost:3000";
-//host = "http://18.233.168.151:80";
-path = "/Users/bogdanabaev/RandomProgramming/node/notes/CLI/"
+//host = "http://localhost:3000";
+host = "http://18.233.168.151:80";
+path = "/Users/bogdanabaev/RandomProgramming/node/notes/CLI/";
 
 
 // BUG: BREAKS WITH SIGNUP CAUSE THERE IS NO 'TIME' AFTER DATA
 //BUG: breaks when send request with nonexisting user name
+
+// lambda - entry point. There construct query, send it to server from there.
 const sendQuery = function (query, username, signup) {
     if (username) {
         request.post({
@@ -212,16 +214,14 @@ yargs.command({
                 if (err) {
                     console.log(err);
                 } else {
-                    console.log(result.body);
                     const dict = JSON.parse(result.body).data.time.report;
                     for (var project in dict) {
-                        console.log(project);
                         console.log("\nProject: " + dict[project]._id);
                         var minSpent = dict[project].timeSpent;
                         var hr = parseInt(minSpent / 60);
                         var min = minSpent % 60;
                         console.log(`Total time: ${hr}:${min}`);
-                        console.log("Work sessions:\n")
+                        console.log("Work sessions:\n");
                         dict[project].workSessions.forEach(session => {
                             console.log(`Start:${session.start.day}/${session.start.month} at ${session.start.time}`);
                             console.log(session.finish ? `Finish:${session.finish.day}/${session.finish.month} at ${session.finish.time}` : "In progress");
@@ -249,7 +249,6 @@ yargs.command({
         if (res) {
             fs.writeFileSync(path + '.username.txt', argv.username);
         }
-
     }
 });
 

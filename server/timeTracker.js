@@ -3,6 +3,7 @@ const assert = require('assert');
 const mongoUtils = require('./mongoUtils.js');
 const fs = require('fs');
 
+
 const createProject = function (username, title) {
     return mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
@@ -231,7 +232,7 @@ const report = function (username, days) {
                 {'$match': {
                     $and:[
                            { $or: [
-                                {$and: [ {"start.day": { $gt: parseInt(lastWeek)} },{"start.month": { $eq: parseInt(lastMonth)} }] } ,
+                                {$and: [ {"start.day": { $gte: parseInt(lastWeek)} },{"start.month": { $eq: parseInt(lastMonth)} }] } ,
                                 {$and: [ {"start.day": { $lte:parseInt( today)} },{"start.month": { $eq: parseInt(thisMonth)} }] } ,
                            ]},
                           {"user": { $eq: username} },
@@ -311,6 +312,5 @@ module.exports = {
     report: report,
     signup: signup
 }
-
 
 
