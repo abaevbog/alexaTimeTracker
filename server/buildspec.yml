@@ -13,7 +13,7 @@ phases:
     commands:
       - echo Build started on `date`
       - cd server
-      - docker build --build-arg DB_URL=54.237.77.73:27017 -t timetracker .
+      - docker build  -t timetracker .
   post_build:
     commands:
       - echo Build completedd on `date`
