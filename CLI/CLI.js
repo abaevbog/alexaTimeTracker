@@ -2,7 +2,7 @@ const yargs = require('yargs')
 const request = require('request')
 const fs = require('fs');
 //host = "http://localhost:3000";
-host = "http://18.233.168.151:80";
+host = "http://54.237.77.73:80";
 path = "/Users/bogdanabaev/RandomProgramming/node/notes/CLI/";
 
 
