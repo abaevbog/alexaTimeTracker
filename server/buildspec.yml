@@ -3,7 +3,8 @@ version: 0.2
 env:
   variables:
     DB_URL: '54.237.77.73:27017'
-    
+  parameter-store:
+
 
 phases:
   install:
@@ -18,7 +19,7 @@ phases:
     commands:
       - echo Build started on `date`
       - cd server
-      - docker build -t timetracker .
+      - docker build --build-arg DB_URL='54.237.77.73:27017'-t timetracker .
   post_build:
     commands:
       - echo Build completedd on `date`
