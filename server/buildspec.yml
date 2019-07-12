@@ -1,11 +1,5 @@
 version: 0.2
 
-env:
-  variables:
-    DB_URL: '54.237.77.73:27017'
-  parameter-store:
-
-
 phases:
   install:
     runtime-versions:
