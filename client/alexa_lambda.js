@@ -252,7 +252,7 @@ const reportIntentHandler = {
             brief{
             timeSpent
               day
-      
+              month
               }
         }
   }

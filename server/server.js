@@ -21,7 +21,6 @@ var schema = buildSchema(`
     }
 
     type DailyBreakdown{
-        _id: String!
         day: String!
         month: String!
         timeSpent: Int!

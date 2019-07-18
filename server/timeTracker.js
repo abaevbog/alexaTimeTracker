@@ -139,6 +139,10 @@ const removeProject = function (username, projectName) {
             }, {
                     $pull: {
                         projectNames: projectName
+                    },
+                    $set: {
+                        currentProject: null,
+                        finish:new Date()
                     }
                 }).then((suc) => {
                     suc.matchedCount ==0 ? reject("You are new to time tracker. Create a project first")  :  
