@@ -1,33 +1,33 @@
 const timestamp = require('time-stamp');
 const assert = require('assert');
 const mongoUtils = require('./mongoUtils.js');
-const fs = require('fs');
 
 
 const createProject =  function (username, title) {
     return mongoUtils.connectToDb(
         () => new Promise(async function (resolve, reject) {
             if(!username){
-                reject("User not signed in");
+                reject("No username provided");
             }
             const db = await mongoUtils.getDb();
             var usr = await db.collection('userData').findOne({ "user.username": username});
             
-                if (!usr){
-                    await db.collection('userData').insertOne({ user: {username:username}, projectNames: [], currentProject: null });
-                    usr ={ user: {username:username}, projectNames: [], currentProject: null }  
-                }
-                if (usr.projectNames.includes(title)) {
-                    reject("Project title already taken");
-                    return;
-                }
-                db.collection('userData').updateOne({
-                    "user.username": 'username'
-                }, {
-                        $push: { projectNames: title }
-                    }).then((_) => {
-                        resolve("Project created!");
-                    });
+            if (!usr){
+                db.collection('userData').insertOne({ user: {username:username}, projectNames: [title], currentProject: null });
+                resolve("Project created!");
+                return;
+            }
+            if (usr.projectNames.includes(title)) {
+                reject("Project title already taken");
+                return;
+            }
+            db.collection('userData').updateOne({
+                "user.username": 'username'
+            }, {
+                    $push: { projectNames: title }
+                }).then((_) => {
+                    resolve("Project created!");
+            });
         })
     );
 }
@@ -40,7 +40,9 @@ const addLog = function (username, activity, projectName) {
             const db = mongoUtils.getDb();
             const result = await db.collection('userData').findOne({ "user.username": username });
             if (!result){
-                reject("Username not found");
+                reject("To create a new log, create the activity first.");
+                db.collection('userData').insertOne({ user: {username:username}, projectNames: [], currentProject: null });
+                usr ={ user: {username:username}, projectNames: [], currentProject: null }
                 return;
             }
             console.log(result);
@@ -50,7 +52,7 @@ const addLog = function (username, activity, projectName) {
                 if (activity == 'start') {
 
                     if (!result.currentProject) {
-                        log = { user: username, projectName: projectName, start: { year: Number(timestamp('YYYY')), month: Number(timestamp('MM')), day: Number(timestamp('DD')), time: timestamp('HH:mm:ss') }, finish: null, duration: null };
+                        log = { user: username, projectName: projectName, start: new Date(), finish: null, duration: null };
                         insertLogToDb(log);
                         db.collection('userData').updateOne({ "user.username": username },
                             {
@@ -66,8 +68,7 @@ const addLog = function (username, activity, projectName) {
                         db.collection('userData').findOne({ "user.username": username }).then((result) => {
                             db.collection('logs').findOne({ projectName: result.currentProject, finish: null })
                                 .then((log) => {
-                                    const fin = { year: Number(timestamp('YYYY')), month: Number(timestamp('MM')), day: Number(timestamp('DD')), time: timestamp('HH:mm:ss') };
-                                    updateLog = { projectName: result.currentProject, finish: fin, id: log._id, duration: durationInMins(subtractTimeStamps(fin, log.start)) }
+                                    updateLog = { projectName: result.currentProject, finish: new Date(), id: log._id, duration: subtractDates(log.start)}
                                     updateLogInDb(updateLog);
                                     nullifyCurrentProject(username);
                                     resolve("Work on " + result.currentProject + " complete!");
@@ -171,48 +172,17 @@ const listProjects = function (username) {
     );
 }
 
-
-//finish/start = {year:...,date:day/mon,time:...}
-const subtractTimeStamps = function (finish, start) {
-    const timesOne = start.time.split(':');
-    const timesTwo = finish.time.split(':');
-    var durationDay = parseInt(finish.day - start.day);
-    var durationHour = parseInt(timesTwo[0] - timesOne[0]);
-    var durationMin = parseInt(timesTwo[1] - timesOne[1]);
-    var durationSec = parseInt(timesTwo[2] - timesOne[2]);
-    if (durationHour < 0) {
-        assert(durationDay > 0);
-        durationDay--;
-        durationHour = 24 + durationHour;
-    }
-    if (durationMin < 0) {
-        durationHour--;
-        durationMin = 60 + durationMin;
-    }
-    if (durationSec < 0) {
-        durationMin--;
-        durationSec = 60 + durationSec;
-    }
-    assert(durationHour >= 0);
-    console.log(`${durationHour}:${durationMin}:${durationSec}`);
-    return `${durationHour}:${durationMin}:${durationSec}`;
-}
-
-const durationInMins = function(duration){
-    const times = duration.split(':');
-    console.log(times);
-    return parseInt(times[1]) + parseInt(times[0]*60) + Math.round( parseFloat(times[2])/60 );
+const subtractDates = function (date){
+    return Math.round((new Date() - date) / 60000);
 }
 
 
-const dateSeverDaysAgoLastMonth = function (month, currentDate) {
-    if ([1, 3, 5, 7, 8, 10, 12].includes(month)) {
-        return 31 + currentDate;
-    } else if ([4, 6, 9, 11].includes(month)) {
-        return 30 + currentDate;
-    } else {
-        return 28 + currentDate;
-    }
+
+const getLowerBound = function(days){
+    var d = new Date();
+    d.setDate(d.getDate()-days);
+    const daysAgo = new Date(d);
+    return daysAgo;
 }
 
 const report = function (username, days) {
@@ -228,44 +198,44 @@ const report = function (username, days) {
             if (!usr){
                 await db.collection('userData').insertOne({ user: {username:username}, projectNames: [], currentProject: null });
                 usr ={ user: {username:username}, projectNames: [], currentProject: null }  
-                resolve(["No recent projects"]);
+                resolve([]);
+                return;
             }
             
-            const { today, thisMonth, thisYear } = { today: timestamp('DD'), thisMonth: timestamp('MM'), thisYear: timestamp('YYYY') };
-            var lastWeek = parseInt(today) - days;
-            var lastMonth = thisMonth;
-            var lastYear = thisYear;
-            
-            if (lastWeek < 1) {
-                console.log("AAAA");
-                lastMonth--;
-                if (lastMonth < 0) {
-                    lastMonth = 0;
-                    lastYear--;
-                }
-                lastWeek = dateSeverDaysAgoLastMonth(lastMonth, lastWeek);
-            }
-            console.log(`${lastWeek > 0} ${lastMonth > 0} && ${lastYear > 0} && ${today>0} && ${thisMonth>0} && ${thisYear>0}`)
-            assert(lastWeek > 0 && lastMonth > 0 && lastYear > 0 &&today>0 &&thisMonth>0 &&thisYear>0);
+
+            const daysAgo = getLowerBound(days);
             db.collection('logs').aggregate([
                 {'$match': {
                     $and:[
-                           { $or: [
-                                {$and: [ {"start.day": { $gte: parseInt(lastWeek)} },{"start.month": { $eq: parseInt(lastMonth)} }] } ,
-                                {$and: [ {"start.day": { $lte:parseInt( today)} },{"start.month": { $eq: parseInt(thisMonth)} }] } ,
-                           ]},
-                          {"user": { $eq: username} },
-                           {$or: [ {"start.year": { $eq: parseInt(thisYear)} },{"start.year": { $eq: parseInt(lastYear)} }] } ,
+                            {"start": { $gte: daysAgo } },               
+                            {"user": { $eq: username} },
                        ]  
                    } },
-                {$group: {
-                    _id : "$projectName",
+                   {$group: {
+                    _id : {
+                        "day":{ $dayOfMonth: "$start"},
+                        "month" : {$month: "$start"},
+                        "projectName" :"$projectName",
+                        
+                    },
                     timeSpent:{ $sum: "$duration"},
                     workSessions:  { $push: {start:"$start",finish:"$finish", duration:"$duration"} }
-                }}
-                
+                }},
+                {$group: {
+                    _id : "$_id.projectName",
+                    totalTime: { $sum: "$timeSpent"},
+                    // full: {$push: {
+                    //     workSessions: "$workSessions"
+                    // }},
+                    brief:{$push: {
+                        day: "$_id.day",
+                        month: "$_id.month",
+                        timeSpent: {$sum: "$workSessions.duration"},                        
+                    }}
+                }}, 
+                    
             ]).toArray().then((res) => {
-                console.log(res);
+                console.log(res[0].brief);
                 resolve(res);
             }).catch((e) => {
                 reject(e);

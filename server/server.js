@@ -11,7 +11,7 @@ var schema = buildSchema(`
         year:Int!
         month: Int!
         day: Int!
-        time:String!
+        time:String
     }
 
     type Session{
@@ -20,10 +20,18 @@ var schema = buildSchema(`
         duration: Int!
     }
 
+    type DailyBreakdown{
+        _id: String!
+        day: String!
+        month: String!
+        timeSpent: Int!
+    }
+
     type Report{
         _id: String!
-        timeSpent:Int!
-        workSessions: [Session]!
+        totalTime:Int!
+        full: [Session]!
+        brief: [DailyBreakdown]!
     }
 
     type TimeTracker {
@@ -110,7 +118,8 @@ class TimeTracker{
     report(days){
         var outcome = notes.report(this.username,days.days);
         return outcome.then((result) => {
-            console.log(result);
+            
+
             return(result);
         }).catch((e) => {
             return(e)
