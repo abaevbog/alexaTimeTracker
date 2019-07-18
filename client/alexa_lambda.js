@@ -245,20 +245,18 @@ const reportIntentHandler = {
   },
   handle(handlerInput) {
   var query=`{
-        time(username: "username"){
-            report(days: 4){ 
-                _id
-                timeSpent
-                workSessions{
-                  duration
-                  start{
-                    day
-                    time
-                  }
-                }
+    time(username: ${username} ){
+        report(days:${days}){ 
+            _id
+            totalTime
+            brief{
+            timeSpent
+              day
+      
               }
-          }
-        }`;
+        }
+  }
+}`;
     return sendQuery(query,handlerInput);
     }
   };
