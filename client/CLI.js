@@ -4,8 +4,8 @@
 const yargs = require('yargs')
 const request = require('request')
 const fs = require('fs');
-host = "http://localhost:3000";
-//host = "http://54.237.77.73:80";
+//host = "http://localhost:3000";
+host = "http://54.237.77.73:80";
 path = "/Users/bogdanabaev/RandomProgramming/node/notes/client/";
 
 
@@ -174,15 +174,15 @@ yargs.command({
         var username = '';
         try {
             username = fs.readFileSync(path + '.username.txt').toString();
-            var query = `{
-                time(username: ${username}){
-                    report(days:${days}){ 
+            var query=`{
+                time(username: "${username}" ){
+                    report(days:${argv.days}){ 
                         _id
                         totalTime
                         brief{
                         timeSpent
                           day
-                  
+                          month
                           }
                     }
               }
@@ -204,20 +204,14 @@ yargs.command({
                     console.log(err);
                 } else {
                     const dict = JSON.parse(result.body).data.time.report;
-                    for (var project in dict) {
-                        console.log("\nProject: " + dict[project]._id);
-                        var minSpent = dict[project].timeSpent;
-                        var hr = parseInt(minSpent / 60);
-                        var min = minSpent % 60;
-                        console.log(`Total time: ${hr}:${min}`);
-                        console.log("Work sessions:\n");
-                        dict[project].workSessions.forEach(session => {
-                            console.log(`Start:${session.start.day}/${session.start.month} at ${session.start.time}`);
-                            console.log(session.finish ? `Finish:${session.finish.day}/${session.finish.month} at ${session.finish.time}` : "In progress");
-                            console.log(session.duration ? `Duration: ${parseInt(session.duration / 60)}:${session.duration % 60} ` : "");
-                            console.log("-------------------------------------\n");
+                    var temp = "Your activities: \n";
+                    dict.forEach((prj) => {
+                        temp  += `\nYou spent total of ${prj.totalTime} minutes on ${prj._id}\n `;
+                        prj.brief.forEach((session)=>{
+                          temp += `--${session.timeSpent} minutes spent on day ${session.day}\n `
                         });
-                    }
+                      });
+                    console.log(temp);
                 }
             })
         } else {
