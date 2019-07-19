@@ -1,3 +1,6 @@
+// Comand line interface for testing the time tracker.
+
+
 const yargs = require('yargs')
 const request = require('request')
 const fs = require('fs');
@@ -5,8 +8,6 @@ host = "http://localhost:3000";
 //host = "http://54.237.77.73:80";
 path = "/Users/bogdanabaev/RandomProgramming/node/notes/client/";
 
-
-// BUG: BREAKS WITH SIGNUP CAUSE THERE IS NO 'TIME' AFTER DATA
 
 const sendQuery = function (query, username, signup) {
     if (username) {

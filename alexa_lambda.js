@@ -1,4 +1,6 @@
-
+// This function is ran on AWS Lambda. It is the endpoint 
+// where all Alexa commands are sent. Then, it sends requests
+// to the node app from server folder to process them.
 const Alexa = require('ask-sdk-core');
 const request = require('request');
 const host = "http://18.233.168.151:80";

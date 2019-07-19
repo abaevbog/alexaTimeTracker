@@ -1,6 +1,15 @@
-const timestamp = require('time-stamp');
+// The main file of time tracker. Contains actual 
+// implementations of the following commands: 
+// createProject, deleteProject, start project, 
+// finish current project, output current project,
+// signup (won't be used), report.
+
+// All requests from Alexa are provided with the ID of the devise.
+// that ID is used as the username
+
 const assert = require('assert');
 const mongoUtils = require('./mongoUtils.js');
+
 
 
 const createProject =  function (username, title) {
@@ -88,7 +97,7 @@ const addLog = function (username, activity, projectName) {
 
 
 
-// log = {user:..., projectName:..., start:...,finish:...,duration:...}
+
 const insertLogToDb = (log) => {
     const db = mongoUtils.getDb();
     const addToCollection = db.collection('logs').insertOne(log);

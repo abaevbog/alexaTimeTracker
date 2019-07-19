@@ -1,4 +1,6 @@
 
+// Utility file to talk to mongoDB
+
 const { MongoClient} = require('mongodb');
 
 const connectionUrl = process.env.DB_URL? process.env.DB_URL: 'mongodb://127.0.0.1:27017/';

@@ -1,5 +1,11 @@
-const notes = require('./timeTracker.js');
+// Definitions of the schema for graphQL, as well as 
+// other server's logic necessary to serve the content
+// upon request. 
+// All requests' inputs are send to timeTracker.js for processing
 
+
+
+const notes = require('./timeTracker.js');
 const express = require('express');
 var graphqlHTTP = require('express-graphql');
 var { buildSchema } = require('graphql');
