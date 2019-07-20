@@ -52,7 +52,7 @@ var schema = buildSchema(`
 
     type Query {
         time(username: String!): TimeTracker
-        signup(username:String!): String!
+        hello: String!
     }
 `);
 
@@ -140,13 +140,16 @@ signup=function(username){
     });
 }
 
+hello=function(){
+    return "Hello!";  
+}
+
+
 var root = {
     time: function (username) {
       return new TimeTracker(username);
     },
-    signup:function(username){
-        return signup(username);
-    }
+    hello: "Hi!"
   }
 
 
