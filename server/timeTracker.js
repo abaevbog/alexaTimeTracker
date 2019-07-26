@@ -314,8 +314,7 @@ module.exports = {
     removeProject: removeProject,
     listProjects: listProjects,
     currentProject: getCurrentProjData,
-    report: report,
-    signup: signup
+    report: report
 }
 
 
