@@ -51,7 +51,7 @@ var schema = buildSchema(`
     }
 
     type Query {
-        time(username: String!): TimeTracker
+        time(username: String!, timeZone: String): TimeTracker
         hello: String!
     }
 `);
@@ -63,10 +63,11 @@ class TimeTracker{
 
     constructor(user){
         this.username = user.username;
+        this.timeZone = user.timeZone
     }
 
     start(project){
-        var outcome = notes.addLog(this.username,'start',project.projectName);
+        var outcome = notes.addLog(this.username,'start',project.projectName,this.timeZone);
         return outcome.then((result) => {
             return(result);
         }).catch((e) => {

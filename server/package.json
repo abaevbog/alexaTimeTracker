@@ -13,6 +13,7 @@
     "express": "^4.17.1",
     "express-graphql": "^0.8.0",
     "graphql": "^14.4.1",
+    "moment-timezone": "^0.5.26",
     "mongodb": "^3.2.7",
     "time-stamp": "^2.2.0"
   }

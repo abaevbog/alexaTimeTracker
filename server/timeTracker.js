@@ -9,7 +9,7 @@
 
 const assert = require('assert');
 const mongoUtils = require('./mongoUtils.js');
-
+const moment = require('moment-timezone');
 
 
 const createProject =  function (username, title) {
@@ -41,10 +41,18 @@ const createProject =  function (username, title) {
     );
 }
 
-//
-const addLog = function (username, activity, projectName) {
+const computeTime = function(timeZone){
+    const now = new Date();
+    var mom = moment.tz(now,timeZone);
+    const date = mom.format().substring(0,19) + "Z";
+    return new Date(date);  
+}
+
+
+
+const addLog = function (username, activity, projectName, timeZone) {
     return mongoUtils.connectToDb(
-        () => new Promise(async function (resolve, reject) {          
+        () => new Promise(async function (resolve, reject) {        
             assert(activity == 'start' || activity == 'end');
             const db = mongoUtils.getDb();
             const result = await db.collection('userData').findOne({ "user.username": username });
@@ -54,15 +62,15 @@ const addLog = function (username, activity, projectName) {
                 usr ={ user: {username:username}, projectNames: [], currentProject: null }
                 return;
             }
-            console.log(result);
-            console.log(projectName);
+            console.log(timeZone);
             if (result.projectNames.includes(projectName) || result.currentProject) {
-
+                const date = computeTime(timeZone);
                 if (activity == 'start') {
 
                     if (!result.currentProject) {
-                        log = { user: username, projectName: projectName, start: new Date(), finish: null, duration: null };
+                        log = { user: username, projectName: projectName, start: date, finish: null,duration: null };
                         insertLogToDb(log);
+                        setTimeZone(username,timeZone );
                         db.collection('userData').updateOne({ "user.username": username },
                             {
                                 $set: {
@@ -77,7 +85,8 @@ const addLog = function (username, activity, projectName) {
                         db.collection('userData').findOne({ "user.username": username }).then((result) => {
                             db.collection('logs').findOne({ projectName: result.currentProject, finish: null })
                                 .then((log) => {
-                                    updateLog = { projectName: result.currentProject, finish: new Date(), id: log._id, duration: subtractDates(log.start)}
+                                    const date = computeTime(timeZone);
+                                    updateLog = { projectName: result.currentProject, finish: date, id: log._id, duration: subtractDates(log.start, result.timeZone)}
                                     updateLogInDb(updateLog);
                                     nullifyCurrentProject(username);
                                     resolve("Work on " + result.currentProject + " complete!");
@@ -136,6 +145,19 @@ const nullifyCurrentProject = (username) => {
         .catch((e) => console.log(e))
 }
 
+const setTimeZone = (username,timeZone) => {
+    const db = mongoUtils.getDb();
+    db.collection('userData').updateOne({
+        "user.username": username
+    }, {
+            $set: {
+                timeZone: timeZone
+            }
+        }).then((suc) => console.log("current project nulled"))
+        .catch((e) => console.log(e))
+}
+
+
 const removeProject = function (username, projectName) {
     return mongoUtils.connectToDb(
         () => new Promise(async function (resolve, reject) {
@@ -185,16 +207,17 @@ const listProjects = function (username) {
     );
 }
 
-const subtractDates = function (date){
-    return Math.round((new Date() - date) / 60000);
+const subtractDates = function (date, timeZone){
+    return Math.round((computeTime(timeZone) - date) / 60000);
 }
 
 
 
-const getLowerBound = function(days){
-    var d = new Date();
+const getLowerBound = function(timeZone,days){
+    var d = computeTime(timeZone);
     d.setDate(d.getDate()-days);
     const daysAgo = new Date(d);
+    console.log(daysAgo);
     return daysAgo;
 }
 
@@ -216,12 +239,13 @@ const report = function (username, days) {
             }
             
 
-            const daysAgo = getLowerBound(days);
+            const daysAgo = getLowerBound(usr.timeZone, days);
             db.collection('logs').aggregate([
                 {'$match': {
                     $and:[
                             {"start": { $gte: daysAgo } },               
                             {"user": { $eq: username} },
+                            {"currentProject": {$exists:false} }
                        ]  
                    } },
                    {$group: {
@@ -232,7 +256,7 @@ const report = function (username, days) {
                         
                     },
                     timeSpent:{ $sum: "$duration"},
-                    workSessions:  { $push: {start:"$start",finish:"$finish", duration:"$duration"} }
+                    workSessions:  { $push: {start:"$start",finish:"$finish", timeZone:"$timeZone", duration:"$duration"} }
                 }},
                 {$group: {
                     _id : "$_id.projectName",
@@ -319,5 +343,7 @@ module.exports = {
     report: report,
     signup: signup
 }
+
+
 
 
