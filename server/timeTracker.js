@@ -16,18 +16,19 @@ const createProject =  function (username, title) {
     return mongoUtils.connectToDb(
         () => new Promise(async function (resolve, reject) {
             if(!username){
-                reject("No username provided");
+                reject("Oooops, something went wrong");
+                return;
             }
             const db = await mongoUtils.getDb();
             var usr = await db.collection('userData').findOne({ "user.username": username});
             
             if (!usr){
                 db.collection('userData').insertOne({ user: {username:username}, projectNames: [title], currentProject: null });
-                resolve("Project created!");
+                resolve("Activity created!");
                 return;
             }
             if (usr.projectNames.includes(title)) {
-                reject("Project title already taken");
+                reject("The activity with this name already exists");
                 return;
             }
             db.collection('userData').updateOne({
@@ -35,7 +36,7 @@ const createProject =  function (username, title) {
             }, {
                     $push: { projectNames: title }
                 }).then((_) => {
-                    resolve("Project created!");
+                    resolve("Activity created!");
             });
         })
     );
@@ -57,12 +58,14 @@ const addLog = function (username, activity, projectName, timeZone) {
             const db = mongoUtils.getDb();
             const result = await db.collection('userData').findOne({ "user.username": username });
             if (!result){
-                reject("To create a new log, create the activity first.");
+                reject("To start a new log, create the activity first.");
                 db.collection('userData').insertOne({ user: {username:username}, projectNames: [], currentProject: null });
                 usr ={ user: {username:username}, projectNames: [], currentProject: null }
                 return;
             }
-            console.log(timeZone);
+            if (!timeZone){
+                timeZone = "America/New_York";
+            }
             if (result.projectNames.includes(projectName) || result.currentProject) {
                 const date = computeTime(timeZone);
                 if (activity == 'start') {
@@ -97,7 +100,7 @@ const addLog = function (username, activity, projectName, timeZone) {
                     }
                 }
             } else {
-                reject("Either your work is complete or you are trying to work on non existing project");
+                reject("Either your work is complete or you are trying to work on a non existing activity");
             }
         })
     );
@@ -112,7 +115,6 @@ const insertLogToDb = (log) => {
     const addToCollection = db.collection('logs').insertOne(log);
 
     addToCollection.then((suc) => {
-        console.log("DB updated");
     }).catch((e) => console.log(e));
 
 }
@@ -162,7 +164,7 @@ const removeProject = function (username, projectName) {
     return mongoUtils.connectToDb(
         () => new Promise(async function (resolve, reject) {
             if(!username){
-                reject("User not found");
+                reject("Something went wrong...");
             }
             const db = mongoUtils.getDb();
             db.collection('userData').updateOne({
@@ -176,8 +178,8 @@ const removeProject = function (username, projectName) {
                         finish:new Date()
                     }
                 }).then((suc) => {
-                    suc.matchedCount ==0 ? reject("You are new to time tracker. Create a project first")  :  
-                    suc.modifiedCount >0 ? resolve("Project removed"): reject("Project does not exist");
+                    suc.matchedCount ==0 ? reject(`Activity ${projectName} does not exist`)  :  
+                    suc.modifiedCount >0 ? resolve(`Activity ${projectName} has been removed`): reject(`Activity ${projectName} does not exist`);
                 })
                 .catch((e) => reject(e))
         })
@@ -188,7 +190,7 @@ const listProjects = function (username) {
     return mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
             if(!username){
-                reject("User not provided");
+                reject("Ooops, something went wrong...");
             }
             const db = mongoUtils.getDb();
             db.collection('userData').findOne({ "user.username": username })
@@ -286,49 +288,21 @@ const getCurrentProjData = function (username) {
     return mongoUtils.connectToDb(
         () => new Promise(function (resolve, reject) {
             if(!username){
-                reject("Empty username");
+                reject("Ooops something went wrong...");
             }
             const db = mongoUtils.getDb();
             db.collection('userData').findOne({ "user.username": username }).then(async function(usr) {
                 if (!usr){
                     await db.collection('userData').insertOne({ user: {username:username}, projectNames: [], currentProject: null });  
-                    resolve("No current project");
+                    resolve("No current activity");
                     return; 
                 }     
                 if (usr.currentProject) {
-                    console.log("Current project: " + usr.currentProject);
-                    resolve("Current project: " + usr.currentProject);
+                    resolve("Current activity: " + usr.currentProject);
                 } else {
-                    console.log("No current project");
-                    resolve("No current project");
+                    resolve("No current activity");
                 }
             }).catch((e) => reject(e));
-        })
-    );
-}
-
-
-
-//
-const signup = function (username) {
-    return mongoUtils.connectToDb(
-        () => new Promise(function (resolve, reject) {
-            if(!username){
-                reject("User must not be null");
-            }
-            const db = mongoUtils.getDb();
-            const checkUserNames = db.collection('userData').findOne({ "user.username": username});
-            checkUserNames.then((usr) => {
-                console.log(usr);
-                if (usr) {
-                    reject("Username already exists");
-                } else {
-                    db.collection('userData').insertOne({ user: username, projectNames: [], currentProject: null }).
-                    then((_) => {
-                        resolve("Username registered")
-                    }).catch((e) => reject(e));
-                }
-            });
         })
     );
 }
