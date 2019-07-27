@@ -56,7 +56,7 @@ const addLog = function (username, activity, projectName, timeZone) {
                 return;
             }
             if (!timeZone) {
-                timeZone = "America/Chicago";
+                timeZone = result.timeZone?result.timeZone:"America/Chicago";
             }
             if (result.projectNames.includes(projectName) || result.currentProject) {
                 const date = helpers.computeTime(timeZone);
