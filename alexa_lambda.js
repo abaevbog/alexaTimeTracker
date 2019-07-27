@@ -1,12 +1,14 @@
 // This function is ran on AWS Lambda. It is the endpoint 
 // where all Alexa commands are sent. Then, it sends requests
 // to the node app from server folder to process them.
+
 const Alexa = require('ask-sdk-core');
 const request = require('request');
-const host = "http://18.233.168.151:80";
+
+const host = "http://internal-alexaAppELB-464974694.us-east-1.elb.amazonaws.com";
 
 const sendQuery = function(query, handlerInput) {
-  return new Promise((resolve,reject) => {
+  return new Promise(function(resolve,reject) {
     const username = handlerInput.requestEnvelope.session.user.userId;
       request.post({
           headers: {
@@ -36,10 +38,11 @@ const sendQuery = function(query, handlerInput) {
           } else if  (handlerInput.requestEnvelope.request.intent.name == "report"){
             const days = handlerInput.requestEnvelope.request.intent.slots.days.value;
             var temp = `Here is the breakdown of your activities for the last ${days} days:\n`;
+            console.log(output);
             output.forEach((prj) => {
-              temp  += `You spent total of ${prj.totalTime} minutes on ${prj._id}`;
+              temp  += `You spent total of ${prj.totalTime} minutes on ${prj._id}. Among those: `;
               prj.brief.forEach((session)=>{
-                temp += `${session.timeSpent} minutes spent on day ${session.day} `
+                temp += `${session.timeSpent} minutes were spent on day ${session.day}, `
               });
             });
             output = temp;
@@ -51,9 +54,9 @@ const sendQuery = function(query, handlerInput) {
             .withSimpleCard('Got it!!!', output)
             .getResponse());
           }
-      })
-  });
-}
+        });
+      });
+};
 
 
 
@@ -64,7 +67,7 @@ const LaunchRequestHandler = {
   },
   handle(handlerInput) {
     const speechText = 'Describe time tracker';
-
+  
     return handlerInput.responseBuilder
       .speak(speechText)
       .reprompt(speechText)
@@ -161,15 +164,34 @@ const startProjectIntentHandler = {
   },
   handle(handlerInput) {
     console.log("Start project");
+    const token = handlerInput.requestEnvelope.context.System.apiAccessToken;
+    const deviceId = handlerInput.requestEnvelope.context.System.device.deviceId;
     const project = handlerInput.requestEnvelope.request.intent.slots.projectName.value;
+    return new Promise((resolve,reject) => {
+    request.get({
+      headers: {
+        "Authorization": `Bearer ${token}`
+      },
+      url: `https://api.amazonalexa.com/v2/devices/${deviceId}/settings/System.timeZone`
+    }, function(err,res) {
+      if (err){
+      resolve(handlerInput.responseBuilder
+              .speak("Something went wrong!")
+              .withSimpleCard('Oops...', "Something broken on our part")
+              .getResponse());      
+      } else {
       var query = `{
-          time(username: "username"){
+          time(username: "username", timeZone: ${res.body}){
           start(projectName: "${project}")
         }
-      }`;
-    return sendQuery(query,handlerInput);
-    }
-  };
+      }`; 
+      resolve(sendQuery(query,handlerInput));
+      }
+    });    
+    })
+
+  }
+};
   
   
 const finishProjectIntentHandler = {
@@ -214,7 +236,7 @@ const lsIntentHandler = {
   },
   handle(handlerInput) {
     console.log("Ls");
-      var query = `{
+      var query =  `{
           time(username: "username"){
           ls
         }
@@ -230,7 +252,7 @@ const currentIntentHandler = {
   },
   handle(handlerInput) {
     console.log("Current project");
-      var query = `{
+      var query =  `{
           time(username: "username"){
           current
         }
@@ -247,18 +269,18 @@ const reportIntentHandler = {
   },
   handle(handlerInput) {
   var query=`{
-    time(username: ${username} ){
-        report(days:${days}){ 
-            _id
-            totalTime
-            brief{
-            timeSpent
-              day
-              month
+        time(username: "username"){
+            report(days: 4){ 
+                _id
+                totalTime
+                 brief{
+                timeSpent
+                day
+                month
+                  }
               }
-        }
-  }
-}`;
+          }
+        }`;
     return sendQuery(query,handlerInput);
     }
   };

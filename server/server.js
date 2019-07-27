@@ -132,14 +132,7 @@ class TimeTracker{
         });
     }
 }
-signup=function(username){
-    var outcome = notes.signup(username);
-    return outcome.then((result) => {
-        return(result);
-    }).catch((e) => {
-        return(e)
-    });
-}
+
 
 hello=function(){
     return "Hello!";  

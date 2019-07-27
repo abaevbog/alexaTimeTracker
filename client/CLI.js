@@ -4,8 +4,7 @@
 const yargs = require('yargs')
 const request = require('request')
 const fs = require('fs');
-//host = "http://localhost:3000";
-host = "http://54.237.77.73:80";
+host = "http://localhost:3000";
 path = "/Users/bogdanabaev/RandomProgramming/node/notes/client/";
 
 
@@ -221,19 +220,7 @@ yargs.command({
 });
 
 
-yargs.command({
-    'command': 'signup <username>',
-    'describe': 'signup',
-    handler: function (argv) {
-        var query = `{
-            signup(username: "${argv.username}")
-        }`;
-        const res = sendQuery(query, argv.username, true);
-        if (res) {
-            fs.writeFileSync(path + '.username.txt', argv.username);
-        }
-    }
-});
+
 
 
 
