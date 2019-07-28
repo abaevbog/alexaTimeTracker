@@ -31,7 +31,7 @@ const createProject = function (username, title) {
                 return;
             }
             db.collection('userData').updateOne({
-                "user.username": 'username'
+                "user.username": username
             }, {
                     $push: { projectNames: title }
                 }).then((_) => {
@@ -190,23 +190,21 @@ const report = function (username, days) {
                 return;
             }
 
-
             const daysAgo = helpers.getLowerBound(usr.timeZone, days);
             db.collection('logs').aggregate([
                 {
                     '$match': {
                         $and: [
-                            { "start": { $gte: daysAgo } },
-                            { "user": { $eq: username } },
-                            { "currentProject": { $exists: false } }
+                            { "finish": { $gte: daysAgo } },
+                            { "user": { $eq: username } }
                         ]
                     }
                 },
                 {
                     $group: {
                         _id: {
-                            "day": { $dayOfMonth: "$start" },
-                            "month": { $month: "$start" },
+                            "day": { $dayOfMonth: "$finish" },
+                            "month": { $month: "$finish" },
                             "projectName": "$projectName",
 
                         },
@@ -229,7 +227,6 @@ const report = function (username, days) {
                 },
 
             ]).toArray().then((res) => {
-                console.log(res[0].brief);
                 resolve(res);
             }).catch((e) => {
                 reject(e);
